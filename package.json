@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
     "@types/mapbox-gl": "^3.4.1",
     "@vercel/analytics": "^1.6.1",
     "mapbox-gl": "^3.18.1",
@@ -24,6 +25,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

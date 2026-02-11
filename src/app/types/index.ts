@@ -2,6 +2,7 @@ export interface MetroMetric {
   name: string;
   heat_index: number;
   sizeRank: number;
+  change?: number;
 }
 
 export interface StateMetric {
@@ -10,6 +11,7 @@ export interface StateMetric {
   heat_index: number;
   metro_count: number;
   metros: MetroMetric[];
+  change?: number;
 }
 
 export type TimePeriod = '30d' | '90d' | '6m' | '1y' | '3y' | '5y';

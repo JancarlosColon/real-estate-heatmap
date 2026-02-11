@@ -24,6 +24,7 @@ export default function Home() {
     <div className="relative w-screen h-screen overflow-hidden bg-black">
       <Globe
         selectedPeriod={selectedPeriod}
+        selectedState={selectedState}
         onStateSelect={setSelectedState}
       />
 
