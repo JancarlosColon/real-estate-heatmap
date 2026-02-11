@@ -24,6 +24,17 @@ function getHeatColor(index: number): string {
   return heatColors[colorIndex];
 }
 
+function ChangeIndicator({ change, currentValue }: { change?: number; currentValue: number }) {
+  if (!change || change === 0) return null;
+  const now = currentValue + change;
+  return (
+    <span className="text-xs ml-1.5">
+      <span className="text-gray-500">→</span>{' '}
+      <span className={change > 0 ? 'text-green-400' : 'text-red-400'}>{now} now</span>
+    </span>
+  );
+}
+
 export default function StateInfoPanel({ state, onClose }: StateInfoPanelProps) {
   if (!state) return null;
 
@@ -48,8 +59,11 @@ export default function StateInfoPanel({ state, onClose }: StateInfoPanelProps) 
       <div className="mb-6">
         <div className="flex justify-between items-baseline">
           <span className="text-gray-500 text-xs tracking-wide">State Average</span>
-          <span className="text-2xl font-light" style={{ color: getHeatColor(state.heat_index) }}>
-            {state.heat_index}
+          <span>
+            <span className="text-2xl font-light" style={{ color: getHeatColor(state.heat_index) }}>
+              {state.heat_index}
+            </span>
+            <ChangeIndicator change={state.change} currentValue={state.heat_index} />
           </span>
         </div>
         <div className="mt-1">
@@ -78,8 +92,11 @@ export default function StateInfoPanel({ state, onClose }: StateInfoPanelProps) 
                   <span className="text-gray-300 text-sm truncate pr-2" title={metro.name}>
                     {metro.name.replace(`, ${state.state_code}`, '')}
                   </span>
-                  <span className="text-sm font-medium" style={{ color: getHeatColor(metro.heat_index) }}>
-                    {metro.heat_index}
+                  <span>
+                    <span className="text-sm font-medium" style={{ color: getHeatColor(metro.heat_index) }}>
+                      {metro.heat_index}
+                    </span>
+                    <ChangeIndicator change={metro.change} currentValue={metro.heat_index} />
                   </span>
                 </div>
                 <span className="text-xs" style={{ color: getHeatColor(metro.heat_index) }}>

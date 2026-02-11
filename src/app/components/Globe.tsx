@@ -5,14 +5,23 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { StateMetric, TimePeriod } from '../types';
 import { heatColors } from '../lib/metrics-config';
-import { loadZillowData, aggregateToStates, StateHeatData } from '../lib/zillow-data';
+
+interface StateHeatData {
+  state_code: string;
+  state_name: string;
+  heat_index: number;
+  metro_count: number;
+  metros: { name: string; heat_index: number; sizeRank: number; change?: number }[];
+  change?: number;
+}
 
 interface GlobeProps {
   selectedPeriod: TimePeriod;
+  selectedState: StateMetric | null;
   onStateSelect: (state: StateMetric | null) => void;
 }
 
-export default function Globe({ selectedPeriod, onStateSelect }: GlobeProps) {
+export default function Globe({ selectedPeriod, selectedState, onStateSelect }: GlobeProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const popup = useRef<mapboxgl.Popup | null>(null);
@@ -24,12 +33,23 @@ export default function Globe({ selectedPeriod, onStateSelect }: GlobeProps) {
     stateDataRef.current = stateData;
   }, [stateData]);
 
-  // Load Zillow data when period changes
+  // Update selected state panel when data changes (e.g. period switch)
+  const selectedStateRef = useRef<StateMetric | null>(null);
+  selectedStateRef.current = selectedState;
+
   useEffect(() => {
-    loadZillowData().then(({ metros, dateColumns }) => {
-      const states = aggregateToStates(metros, dateColumns, selectedPeriod);
-      setStateData(states);
-    });
+    if (!selectedStateRef.current || stateData.length === 0) return;
+    const updated = stateData.find((s) => s.state_code === selectedStateRef.current!.state_code);
+    if (updated) {
+      onStateSelect(updated);
+    }
+  }, [stateData, onStateSelect]);
+
+  // Load heat data when period changes
+  useEffect(() => {
+    fetch(`/api/heat-data?period=${selectedPeriod}`)
+      .then((res) => res.json())
+      .then((data) => setStateData(data));
   }, [selectedPeriod]);
 
   // Get color for a state based on heat index
@@ -159,12 +179,16 @@ export default function Globe({ selectedPeriod, onStateSelect }: GlobeProps) {
       const state = stateDataRef.current.find((s) => s.state_name === stateName);
 
       if (state) {
+        const changeHtml = state.change && state.change !== 0
+          ? ` <span style="color: #6b7280; font-size: 11px;">→</span> <span style="color: ${state.change > 0 ? '#4ade80' : '#f87171'}; font-size: 11px;">${state.heat_index + state.change} now</span>`
+          : '';
+
         popup.current
           .setLngLat(e.lngLat)
           .setHTML(`
             <div class="px-4 py-3">
               <div class="font-medium text-white text-sm">${state.state_name}</div>
-              <div class="text-gray-400 text-xs mt-1">Heat Index: <span class="text-white">${state.heat_index}</span></div>
+              <div class="text-gray-400 text-xs mt-1">Heat Index: <span class="text-white">${state.heat_index}</span>${changeHtml}</div>
               <div class="text-gray-500 text-xs mt-1">${state.metro_count} metro${state.metro_count > 1 ? 's' : ''}</div>
             </div>
           `)
