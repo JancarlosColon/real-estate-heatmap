@@ -39,10 +39,15 @@ export default function StateInfoPanel({ state, onClose }: StateInfoPanelProps) 
   if (!state) return null;
 
   return (
-    <div className="absolute bottom-8 left-8 bg-black/80 backdrop-blur-xl rounded-2xl p-6 w-80 max-h-[70vh] overflow-y-auto border border-white/10">
-      <div className="flex justify-between items-start mb-5">
+    <div className="absolute bottom-0 left-0 right-0 md:bottom-8 md:left-8 md:right-auto bg-black/80 backdrop-blur-xl rounded-t-2xl md:rounded-2xl p-4 md:p-6 md:w-80 max-h-[60vh] md:max-h-[70vh] overflow-y-auto border border-white/10">
+      {/* Drag handle - mobile only */}
+      <div className="flex justify-center mb-3 md:hidden">
+        <div className="w-10 h-1 rounded-full bg-white/20" />
+      </div>
+
+      <div className="flex justify-between items-start mb-4 md:mb-5">
         <div>
-          <h2 className="text-xl font-light text-white tracking-tight">{state.state_name}</h2>
+          <h2 className="text-lg md:text-xl font-light text-white tracking-tight">{state.state_name}</h2>
           <p className="text-gray-600 text-xs tracking-wide mt-1">{state.state_code}</p>
         </div>
         <button
@@ -56,11 +61,11 @@ export default function StateInfoPanel({ state, onClose }: StateInfoPanelProps) 
       </div>
 
       {/* State Average */}
-      <div className="mb-6">
+      <div className="mb-4 md:mb-6">
         <div className="flex justify-between items-baseline">
           <span className="text-gray-500 text-xs tracking-wide">State Average</span>
           <span>
-            <span className="text-2xl font-light" style={{ color: getHeatColor(state.heat_index) }}>
+            <span className="text-xl md:text-2xl font-light" style={{ color: getHeatColor(state.heat_index) }}>
               {state.heat_index}
             </span>
             <ChangeIndicator change={state.change} currentValue={state.heat_index} />
@@ -108,7 +113,7 @@ export default function StateInfoPanel({ state, onClose }: StateInfoPanelProps) 
         </div>
       )}
 
-      <div className="mt-5 pt-4 border-t border-white/5">
+      <div className="mt-4 md:mt-5 pt-3 md:pt-4 border-t border-white/5">
         <p className="text-gray-600 text-xs tracking-wide">
           Source: Zillow Market Heat Index
         </p>

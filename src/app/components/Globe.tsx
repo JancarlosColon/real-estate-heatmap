@@ -169,46 +169,50 @@ export default function Globe({ selectedPeriod, selectedState, onStateSelect }: 
       setIsMapLoaded(true);
     });
 
-    // Hover - match by state name
-    map.current.on('mousemove', 'states-fill', (e) => {
-      if (!map.current || !popup.current || !e.features?.[0]) return;
+    // Hover - only on non-touch devices
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-      map.current.getCanvas().style.cursor = 'pointer';
+    if (!isTouchDevice) {
+      map.current.on('mousemove', 'states-fill', (e) => {
+        if (!map.current || !popup.current || !e.features?.[0]) return;
 
-      const stateName = e.features[0].properties?.name;
-      const state = stateDataRef.current.find((s) => s.state_name === stateName);
+        map.current.getCanvas().style.cursor = 'pointer';
 
-      if (state) {
-        const changeHtml = state.change && state.change !== 0
-          ? ` <span style="color: #6b7280; font-size: 11px;">→</span> <span style="color: ${state.change > 0 ? '#4ade80' : '#f87171'}; font-size: 11px;">${state.heat_index + state.change} now</span>`
-          : '';
+        const stateName = e.features[0].properties?.name;
+        const state = stateDataRef.current.find((s) => s.state_name === stateName);
 
-        popup.current
-          .setLngLat(e.lngLat)
-          .setHTML(`
-            <div class="px-4 py-3">
-              <div class="font-medium text-white text-sm">${state.state_name}</div>
-              <div class="text-gray-400 text-xs mt-1">Heat Index: <span class="text-white">${state.heat_index}</span>${changeHtml}</div>
-              <div class="text-gray-500 text-xs mt-1">${state.metro_count} metro${state.metro_count > 1 ? 's' : ''}</div>
-            </div>
-          `)
-          .addTo(map.current);
+        if (state) {
+          const changeHtml = state.change && state.change !== 0
+            ? ` <span style="color: #6b7280; font-size: 11px;">→</span> <span style="color: ${state.change > 0 ? '#4ade80' : '#f87171'}; font-size: 11px;">${state.heat_index + state.change} now</span>`
+            : '';
 
-        map.current.setPaintProperty('states-highlight', 'line-opacity', [
-          'case',
-          ['==', ['get', 'name'], stateName],
-          1,
-          0,
-        ]);
-      }
-    });
+          popup.current
+            .setLngLat(e.lngLat)
+            .setHTML(`
+              <div class="px-4 py-3">
+                <div class="font-medium text-white text-sm">${state.state_name}</div>
+                <div class="text-gray-400 text-xs mt-1">Heat Index: <span class="text-white">${state.heat_index}</span>${changeHtml}</div>
+                <div class="text-gray-500 text-xs mt-1">${state.metro_count} metro${state.metro_count > 1 ? 's' : ''}</div>
+              </div>
+            `)
+            .addTo(map.current);
 
-    map.current.on('mouseleave', 'states-fill', () => {
-      if (!map.current || !popup.current) return;
-      map.current.getCanvas().style.cursor = '';
-      popup.current.remove();
-      map.current.setPaintProperty('states-highlight', 'line-opacity', 0);
-    });
+          map.current.setPaintProperty('states-highlight', 'line-opacity', [
+            'case',
+            ['==', ['get', 'name'], stateName],
+            1,
+            0,
+          ]);
+        }
+      });
+
+      map.current.on('mouseleave', 'states-fill', () => {
+        if (!map.current || !popup.current) return;
+        map.current.getCanvas().style.cursor = '';
+        popup.current.remove();
+        map.current.setPaintProperty('states-highlight', 'line-opacity', 0);
+      });
+    }
 
     // Click - match by state name
     map.current.on('click', 'states-fill', (e) => {
@@ -218,7 +222,9 @@ export default function Globe({ selectedPeriod, selectedState, onStateSelect }: 
       onStateSelect(state || null);
     });
 
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    if (!isTouchDevice) {
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    }
 
     return () => {
       map.current?.remove();

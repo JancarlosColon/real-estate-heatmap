@@ -28,18 +28,18 @@ export default function Home() {
         onStateSelect={setSelectedState}
       />
 
-      <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-32 md:h-48 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
 
-      <div className="absolute top-8 left-8 pointer-events-none">
-        <h1 className="text-4xl font-light text-white tracking-tight mb-1">
+      <div className="absolute top-4 left-4 md:top-8 md:left-8 pointer-events-none">
+        <h1 className="text-2xl md:text-4xl font-light text-white tracking-tight mb-1">
           Real Estate Heatmap
         </h1>
-        <p className="text-gray-500 text-sm font-light tracking-wide">
+        <p className="text-gray-500 text-sm font-light tracking-wide hidden sm:block">
           US Market Conditions
         </p>
       </div>
 
-      <div className="absolute top-8 left-0 right-0 flex justify-center pointer-events-none">
+      <div className="absolute top-14 md:top-8 left-4 right-4 md:left-0 md:right-0 flex justify-center pointer-events-none">
         <div className="pointer-events-auto">
           <TimePeriodSelector
             selectedPeriod={selectedPeriod}
@@ -48,7 +48,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="absolute bottom-8 right-8">
+      <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8">
         <Legend />
       </div>
 
@@ -58,8 +58,13 @@ export default function Home() {
       />
 
       {!selectedState && (
-        <div className="absolute bottom-8 left-8 text-gray-600 text-xs font-light tracking-wide">
+        <div className="absolute bottom-4 left-4 md:bottom-8 md:left-8 text-gray-600 text-xs font-light tracking-wide hidden sm:block">
           <p>Drag to rotate · Scroll to zoom · Click state for details</p>
+        </div>
+      )}
+      {!selectedState && (
+        <div className="absolute bottom-4 left-4 text-gray-600 text-xs font-light tracking-wide sm:hidden">
+          <p>Tap a state for details</p>
         </div>
       )}
     </div>
