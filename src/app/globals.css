@@ -63,3 +63,10 @@ body {
 .mapboxgl-ctrl-icon {
   filter: invert(1);
 }
+
+/* Hide Mapbox navigation controls on small screens */
+@media (max-width: 767px) {
+  .mapboxgl-ctrl-top-right {
+    display: none;
+  }
+}
