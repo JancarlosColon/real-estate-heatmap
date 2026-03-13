@@ -208,11 +208,16 @@ export async function GET(request: NextRequest) {
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
-  return NextResponse.json({
+  const summary = {
     success: errors.length === 0,
     elapsed: `${elapsed}s`,
     results,
     errors: errors.length > 0 ? errors : undefined,
     timestamp: new Date().toISOString(),
-  });
+  };
+
+  // Log so it appears in Vercel logs
+  console.log('[CRON] Data refresh complete:', JSON.stringify(summary, null, 2));
+
+  return NextResponse.json(summary);
 }
