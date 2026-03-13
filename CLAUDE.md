@@ -18,7 +18,7 @@ npm run build    # Production build
 npm run lint     # Run ESLint
 npm run start    # Start production server
 
-# Seed database from CSV (requires SUPABASE_SERVICE_ROLE_KEY in .env.local)
+# Seed database from CSV (requires SUPABASE_SECRET_KEY in .env.local)
 npx tsx --env-file=.env.local scripts/seed-zillow-data.ts
 ```
 
@@ -49,7 +49,7 @@ Required in `.env.local`:
 NEXT_PUBLIC_MAPBOX_TOKEN=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=       # Only needed for seed script + cron, never exposed to client
+SUPABASE_SECRET_KEY=       # Only needed for seed script + cron, never exposed to client
 CRON_SECRET=                     # Vercel Cron auth token (set in Vercel env vars)
 ```
 
