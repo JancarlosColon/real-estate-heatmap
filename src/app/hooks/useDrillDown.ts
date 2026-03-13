@@ -21,22 +21,15 @@ export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricK
   const [drillDown, setDrillDown] = useState<DrillDownState>({ level: 'state' });
   const [data, setData] = useState<DrillDownData>({ states: [], counties: [], zips: [] });
   const [loading, setLoading] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
+  const countyAbortRef = useRef<AbortController | null>(null);
+  const zipAbortRef = useRef<AbortController | null>(null);
 
   // Fetch state-level data
   const fetchStates = useCallback(async (period: TimePeriod) => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
     try {
-      const res = await fetch(`/api/heat-data?period=${period}`, {
-        signal: controller.signal,
-      });
+      const res = await fetch(`/api/heat-data?period=${period}`);
       const stateData = await res.json();
-      if (!controller.signal.aborted) {
-        setData((prev) => ({ ...prev, states: stateData }));
-      }
+      setData((prev) => ({ ...prev, states: stateData }));
     } catch (err) {
       if (err instanceof Error && err.name !== 'AbortError') {
         console.error('Failed to fetch states:', err);
@@ -46,10 +39,9 @@ export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricK
 
   // Fetch county-level data for a state
   const fetchCounties = useCallback(async (stateCode: string, period: TimePeriod, metric: MetricKey = 'heat_index') => {
-    setLoading(true);
-    abortRef.current?.abort();
+    countyAbortRef.current?.abort();
     const controller = new AbortController();
-    abortRef.current = controller;
+    countyAbortRef.current = controller;
 
     try {
       const url = metric === 'heat_index'
@@ -58,19 +50,16 @@ export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricK
       const res = await fetch(url, { signal: controller.signal });
       const countyData = await res.json();
       if (!controller.signal.aborted) {
-        // Normalize metrics-data response to match CountyMetric shape
         if (metric !== 'heat_index') {
           for (const row of countyData) {
             row.heat_index = row.value;
           }
         }
         setData((prev) => ({ ...prev, counties: countyData }));
-        setLoading(false);
       }
     } catch (err) {
       if (err instanceof Error && err.name !== 'AbortError') {
         console.error('Failed to fetch counties:', err);
-        setLoading(false);
       }
     }
   }, []);
@@ -79,9 +68,9 @@ export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricK
   const fetchZips = useCallback(
     async (countyName: string, stateCode: string, period: TimePeriod, metric: MetricKey = 'heat_index') => {
       setLoading(true);
-      abortRef.current?.abort();
+      zipAbortRef.current?.abort();
       const controller = new AbortController();
-      abortRef.current = controller;
+      zipAbortRef.current = controller;
 
       try {
         const url = metric === 'heat_index'
@@ -118,6 +107,8 @@ export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricK
     if (drillDown.level === 'county' && drillDown.stateCode) {
       fetchCounties(drillDown.stateCode, selectedPeriod, selectedMetric);
     } else if (drillDown.level === 'zip' && drillDown.countyName && drillDown.stateCode) {
+      // Refetch both counties (for county average display) and ZIPs
+      fetchCounties(drillDown.stateCode, selectedPeriod, selectedMetric);
       fetchZips(drillDown.countyName, drillDown.stateCode, selectedPeriod, selectedMetric);
     }
   }, [selectedPeriod, selectedMetric, drillDown, fetchCounties, fetchZips]);
@@ -145,9 +136,12 @@ export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricK
         countyName,
         countyFips,
       });
+      // Fetch counties (for county average in panel) and ZIPs in parallel
+      // Use separate fetch to avoid abort conflicts
+      fetchCounties(stateCode, selectedPeriod, selectedMetric);
       fetchZips(countyName, stateCode, selectedPeriod, selectedMetric);
     },
-    [selectedPeriod, selectedMetric, fetchZips]
+    [selectedPeriod, selectedMetric, fetchCounties, fetchZips]
   );
 
   // Navigate back
