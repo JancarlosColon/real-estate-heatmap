@@ -296,7 +296,7 @@ export default function DetailPanel({
     : drillDown.stateCode;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 md:bottom-8 md:left-8 md:right-auto bg-black/80 backdrop-blur-xl rounded-t-2xl md:rounded-2xl p-4 md:p-6 md:w-80 max-h-[60vh] md:max-h-[70vh] overflow-y-auto border border-white/10 z-20">
+    <div className="absolute bottom-0 left-0 right-0 md:bottom-8 md:left-8 md:right-auto bg-black/80 backdrop-blur-xl rounded-t-2xl md:rounded-2xl p-4 md:p-6 md:w-80 max-h-[60vh] md:max-h-[70vh] overflow-y-auto border border-white/10 z-20 animate-slide-up md:animate-fade-in">
       <div className="flex justify-center mb-3 md:hidden">
         <div className="w-10 h-1 rounded-full bg-white/20" />
       </div>

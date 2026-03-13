@@ -189,6 +189,8 @@ export default function Globe({
         paint: {
           'fill-color': '#1a1a1a',
           'fill-opacity': 0.4,
+          'fill-color-transition': { duration: 500 },
+          'fill-opacity-transition': { duration: 400 },
         },
       });
 
@@ -226,6 +228,8 @@ export default function Globe({
         paint: {
           'fill-color': '#1a1a1a',
           'fill-opacity': 0,
+          'fill-color-transition': { duration: 500 },
+          'fill-opacity-transition': { duration: 400 },
         },
       });
 
@@ -273,6 +277,8 @@ export default function Globe({
           'circle-opacity': 0,
           'circle-stroke-color': 'rgba(255, 255, 255, 0.3)',
           'circle-stroke-width': 1,
+          'circle-color-transition': { duration: 500 },
+          'circle-opacity-transition': { duration: 400 },
           'circle-stroke-opacity': 0,
         },
       });
