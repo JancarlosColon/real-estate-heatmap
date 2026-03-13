@@ -14,6 +14,18 @@ import AffordabilityCalculator from './components/AffordabilityCalculator';
 import { useDrillDown } from './hooks/useDrillDown';
 import { useUrlState, syncToUrl } from './hooks/useUrlState';
 
+const STATE_NAMES: Record<string, string> = {
+  AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',
+  CT:'Connecticut',DE:'Delaware',DC:'District of Columbia',FL:'Florida',GA:'Georgia',
+  HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',
+  LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',
+  MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',
+  NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',
+  OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',
+  SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',
+  WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',
+};
+
 const Globe = dynamic(() => import('./components/Globe'), {
   ssr: false,
   loading: () => (
@@ -52,6 +64,14 @@ export default function Home() {
   const handleSearchCounty = useCallback((countyName: string, fips: string, stateCode: string, stateName: string) => {
     drillToCounty(stateCode, stateName);
     setTimeout(() => drillToZip(countyName, fips, stateCode, stateName), 100);
+  }, [drillToCounty, drillToZip]);
+
+  const handleSearchZip = useCallback((_zipCode: string, _city: string, countyName: string, stateCode: string, fips: string | null) => {
+    const stateName = STATE_NAMES[stateCode] || stateCode;
+    drillToCounty(stateCode, stateName);
+    if (fips) {
+      setTimeout(() => drillToZip(countyName, fips, stateCode, stateName), 100);
+    }
   }, [drillToCounty, drillToZip]);
 
   const isDetailOpen = drillDown.level !== 'state';
@@ -101,7 +121,7 @@ export default function Home() {
         <SearchBar
           onStateSelect={handleSearchState}
           onCountySelect={handleSearchCounty}
-          onZipSelect={() => {}}
+          onZipSelect={handleSearchZip}
         />
       </div>
 

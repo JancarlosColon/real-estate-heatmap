@@ -56,11 +56,34 @@ export async function GET(request: NextRequest) {
     if (seenZips.has(z.zip_code)) return false;
     seenZips.add(z.zip_code);
     return true;
-  });
+  }).slice(0, 5);
+
+  // Look up FIPS for each ZIP's county
+  const zipCountyPairs = [...new Set(uniqueZips.map((z: any) => `${z.county_name}|${z.state_code}`))];
+  const fipsMap = new Map<string, string>();
+  if (zipCountyPairs.length > 0) {
+    for (const pair of zipCountyPairs) {
+      const [countyName, stateCode] = pair.split('|');
+      const { data: countyRow } = await supabase
+        .from('county_heat_index')
+        .select('fips')
+        .eq('county_name', countyName)
+        .eq('state_code', stateCode)
+        .limit(1);
+      if (countyRow && countyRow.length > 0) {
+        fipsMap.set(pair, countyRow[0].fips);
+      }
+    }
+  }
+
+  const zipsWithFips = uniqueZips.map((z: any) => ({
+    ...z,
+    fips: fipsMap.get(`${z.county_name}|${z.state_code}`) || null,
+  }));
 
   return NextResponse.json({
     states: statesRes.data || [],
     counties: uniqueCounties.slice(0, 5),
-    zips: uniqueZips.slice(0, 5),
+    zips: zipsWithFips,
   });
 }
