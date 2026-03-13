@@ -17,8 +17,8 @@ interface DrillDownData {
   zips: ZipMetric[];
 }
 
-export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricKey = 'heat_index', initialDrillDown?: DrillDownState) {
-  const [drillDown, setDrillDown] = useState<DrillDownState>(initialDrillDown || { level: 'state' });
+export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricKey = 'heat_index') {
+  const [drillDown, setDrillDown] = useState<DrillDownState>({ level: 'state' });
   const [data, setData] = useState<DrillDownData>({ states: [], counties: [], zips: [] });
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);

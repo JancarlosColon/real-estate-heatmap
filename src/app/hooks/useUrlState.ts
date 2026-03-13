@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { DrillDownState, MetricKey, TimePeriod } from '@/app/types';
 
 const STATE_NAMES: Record<string, string> = {
@@ -23,52 +23,10 @@ const VALID_METRICS: MetricKey[] = [
   'median_sale_price', 'price_cuts', 'new_listings', 'inventory',
 ];
 
-function parseUrlState(): {
-  initialMetric: MetricKey | null;
-  initialPeriod: TimePeriod | null;
-  initialDrillDown: DrillDownState | null;
-} {
-  if (typeof window === 'undefined') {
-    return { initialMetric: null, initialPeriod: null, initialDrillDown: null };
-  }
-
-  const params = new URLSearchParams(window.location.search);
-
-  const metricParam = params.get('metric');
-  const initialMetric = metricParam && VALID_METRICS.includes(metricParam as MetricKey)
-    ? (metricParam as MetricKey)
-    : null;
-
-  const periodParam = params.get('period');
-  const initialPeriod = periodParam && VALID_PERIODS.includes(periodParam as TimePeriod)
-    ? (periodParam as TimePeriod)
-    : null;
-
-  const stateCode = params.get('state')?.toUpperCase() ?? null;
-  const countyName = params.get('county') ?? null;
-  const countyFips = params.get('fips') ?? null;
-
-  let initialDrillDown: DrillDownState | null = null;
-
-  if (stateCode && STATE_NAMES[stateCode]) {
-    if (countyName && countyFips) {
-      initialDrillDown = {
-        level: 'county',
-        stateCode,
-        stateName: STATE_NAMES[stateCode],
-        countyName,
-        countyFips,
-      };
-    } else {
-      initialDrillDown = {
-        level: 'county',
-        stateCode,
-        stateName: STATE_NAMES[stateCode],
-      };
-    }
-  }
-
-  return { initialMetric, initialPeriod, initialDrillDown };
+export interface UrlState {
+  metric: MetricKey | null;
+  period: TimePeriod | null;
+  drillDown: DrillDownState | null;
 }
 
 export function syncToUrl(
@@ -94,7 +52,49 @@ export function syncToUrl(
   window.history.replaceState(null, '', url);
 }
 
-export function useUrlState() {
-  const parsed = useRef(parseUrlState());
-  return parsed.current;
+/**
+ * Reads URL params AFTER hydration to avoid SSR/client mismatch.
+ * Returns callbacks that page.tsx uses to update state once.
+ */
+export function useUrlState(
+  setMetric: (m: MetricKey) => void,
+  setPeriod: (p: TimePeriod) => void,
+  drillToCounty: (stateCode: string, stateName: string) => void,
+  drillToZip: (countyName: string, countyFips: string, stateCode: string, stateName: string) => void,
+) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    const metricParam = params.get('metric');
+    if (metricParam && VALID_METRICS.includes(metricParam as MetricKey)) {
+      setMetric(metricParam as MetricKey);
+    }
+
+    const periodParam = params.get('period');
+    if (periodParam && VALID_PERIODS.includes(periodParam as TimePeriod)) {
+      setPeriod(periodParam as TimePeriod);
+    }
+
+    const stateCode = params.get('state')?.toUpperCase() ?? null;
+    const countyName = params.get('county') ?? null;
+    const countyFips = params.get('fips') ?? null;
+
+    if (stateCode && STATE_NAMES[stateCode]) {
+      if (countyName && countyFips) {
+        drillToCounty(stateCode, STATE_NAMES[stateCode]);
+        // Small delay so county data starts loading first
+        setTimeout(() => drillToZip(countyName, countyFips, stateCode, STATE_NAMES[stateCode]), 50);
+      } else {
+        drillToCounty(stateCode, STATE_NAMES[stateCode]);
+      }
+    }
+
+    setReady(true);
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return ready;
 }
