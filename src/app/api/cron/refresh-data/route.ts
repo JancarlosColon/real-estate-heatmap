@@ -83,14 +83,15 @@ async function batchUpsert(
 // ─── Seed functions (LATEST MONTH ONLY) ─────────────────────────
 
 async function seedMetroData(supabase: AnySupabase) {
+  console.log('[CRON] ═══ Metro: Fetching CSV from Zillow CDN...');
   const res = await fetch(`${ZILLOW_CDN}/market_temp_index/Metro_market_temp_index_uc_sfrcondo_month.csv`);
   if (!res.ok) throw new Error(`Metro CSV fetch failed: ${res.status}`);
   const { headers, rows, dateColumns } = parseCSV(await res.text());
 
   const latestDate = dateColumns[dateColumns.length - 1];
   const latestIdx = headers.indexOf(latestDate);
+  console.log(`[CRON] Metro: Parsed ${rows.length} metros, latest date: ${latestDate}`);
 
-  // Upsert metro_regions (always full — it's small)
   const regions = rows.map((row) => ({
     region_id: parseInt(row[0]),
     size_rank: parseInt(row[1]) || 999,
@@ -98,9 +99,9 @@ async function seedMetroData(supabase: AnySupabase) {
     region_type: row[3],
     state_code: row[4] || null,
   }));
+  console.log(`[CRON] Metro: Upserting ${regions.length} metro regions...`);
   await batchUpsert(supabase, 'metro_regions', regions, 'region_id');
 
-  // Upsert heat index for LATEST MONTH only
   const heatRows: Record<string, unknown>[] = [];
   for (const row of rows) {
     const val = parseFloat(row[latestIdx]);
@@ -108,21 +109,25 @@ async function seedMetroData(supabase: AnySupabase) {
       heatRows.push({ region_id: parseInt(row[0]), date: latestDate, heat_value: val });
     }
   }
+  console.log(`[CRON] Metro: Upserting ${heatRows.length} heat index rows...`);
   const count = await batchUpsert(supabase, 'metro_market_temp_index', heatRows, 'region_id,date');
 
-  // Refresh materialized view
+  console.log('[CRON] Metro: Refreshing state_heat_summary materialized view...');
   try { await supabase.rpc('refresh_state_heat_summary'); } catch { /* may not exist */ }
 
+  console.log(`[CRON] Metro: ✓ Done (${regions.length} regions, ${count} heat rows)`);
   return { metros: regions.length, heatRows: count, latestDate };
 }
 
 async function seedCountyData(supabase: AnySupabase) {
+  console.log('[CRON] ═══ County: Fetching CSV from Zillow CDN...');
   const res = await fetch(`${ZILLOW_CDN}/market_temp_index/County_market_temp_index_uc_sfrcondo_month.csv`);
   if (!res.ok) throw new Error(`County CSV fetch failed: ${res.status}`);
   const { headers, rows, dateColumns } = parseCSV(await res.text());
 
   const latestDate = dateColumns[dateColumns.length - 1];
   const latestIdx = headers.indexOf(latestDate);
+  console.log(`[CRON] County: Parsed ${rows.length} counties, latest date: ${latestDate}`);
 
   const countyRows: Record<string, unknown>[] = [];
   for (const row of rows) {
@@ -142,17 +147,22 @@ async function seedCountyData(supabase: AnySupabase) {
     });
   }
 
+  console.log(`[CRON] County: Upserting ${countyRows.length} rows into Supabase...`);
   const count = await batchUpsert(supabase, 'county_heat_index', countyRows, 'fips,date');
+  console.log(`[CRON] County: ✓ Done (${count} rows)`);
   return { counties: countyRows.length, rows: count, latestDate };
 }
 
 async function seedZipData(supabase: AnySupabase) {
+  console.log('[CRON] ═══ ZIP: Fetching CSV from Zillow CDN (17.5MB)...');
   const res = await fetch(`${ZILLOW_CDN}/market_temp_index/Zip_market_temp_index_uc_sfrcondo_month.csv`);
   if (!res.ok) throw new Error(`ZIP CSV fetch failed: ${res.status}`);
+  console.log('[CRON] ZIP: CSV downloaded, parsing...');
   const { headers, rows, dateColumns } = parseCSV(await res.text());
 
   const latestDate = dateColumns[dateColumns.length - 1];
   const latestIdx = headers.indexOf(latestDate);
+  console.log(`[CRON] ZIP: Parsed ${rows.length} ZIPs, latest date: ${latestDate}`);
 
   const zipRows: Record<string, unknown>[] = [];
   for (const row of rows) {
@@ -170,7 +180,9 @@ async function seedZipData(supabase: AnySupabase) {
     });
   }
 
+  console.log(`[CRON] ZIP: Upserting ${zipRows.length} rows into Supabase...`);
   const count = await batchUpsert(supabase, 'zip_heat_index', zipRows, 'zip_code,date');
+  console.log(`[CRON] ZIP: ✓ Done (${count} rows)`);
   return { zips: zipRows.length, rows: count, latestDate };
 }
 
@@ -183,6 +195,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  console.log('[CRON] ╔══════════════════════════════════════╗');
+  console.log('[CRON] ║  Monthly Data Refresh Started         ║');
+  console.log('[CRON] ╚══════════════════════════════════════╝');
+
   const supabase = getSupabase();
   const results: Record<string, unknown> = {};
   const errors: string[] = [];
@@ -191,18 +207,21 @@ export async function GET(request: NextRequest) {
   try {
     results.metro = await seedMetroData(supabase);
   } catch (e) {
+    console.error('[CRON] ✗ Metro FAILED:', (e as Error).message);
     errors.push(`Metro: ${(e as Error).message}`);
   }
 
   try {
     results.county = await seedCountyData(supabase);
   } catch (e) {
+    console.error('[CRON] ✗ County FAILED:', (e as Error).message);
     errors.push(`County: ${(e as Error).message}`);
   }
 
   try {
     results.zip = await seedZipData(supabase);
   } catch (e) {
+    console.error('[CRON] ✗ ZIP FAILED:', (e as Error).message);
     errors.push(`ZIP: ${(e as Error).message}`);
   }
 
