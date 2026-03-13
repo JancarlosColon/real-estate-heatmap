@@ -22,10 +22,8 @@ const Globe = dynamic(() => import('./components/Globe'), {
 });
 
 export default function Home() {
-  const { initialMetric, initialPeriod, initialDrillDown } = useUrlState();
-
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>(initialPeriod || '30d');
-  const [selectedMetric, setSelectedMetric] = useState<MetricKey>(initialMetric || 'heat_index');
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('30d');
+  const [selectedMetric, setSelectedMetric] = useState<MetricKey>('heat_index');
   const {
     drillDown,
     data,
@@ -34,7 +32,10 @@ export default function Home() {
     drillToZip,
     goBack,
     resetDrillDown,
-  } = useDrillDown(selectedPeriod, selectedMetric, initialDrillDown || undefined);
+  } = useDrillDown(selectedPeriod, selectedMetric);
+
+  // Restore state from URL after hydration (avoids SSR mismatch)
+  useUrlState(setSelectedMetric, setSelectedPeriod, drillToCounty, drillToZip);
 
   // Sync state to URL
   useEffect(() => {
