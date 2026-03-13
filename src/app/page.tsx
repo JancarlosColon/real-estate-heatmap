@@ -9,6 +9,7 @@ import SearchBar from './components/SearchBar';
 import DetailPanel from './components/DetailPanel';
 import Breadcrumb from './components/Breadcrumb';
 import Legend from './components/Legend';
+import FeedbackButton from './components/FeedbackButton';
 import { useDrillDown } from './hooks/useDrillDown';
 import { useUrlState, syncToUrl } from './hooks/useUrlState';
 
@@ -110,7 +111,8 @@ export default function Home() {
         loading={loading}
       />
 
-      <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8">
+      <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8 flex flex-col items-end gap-2">
+        <FeedbackButton />
         <Legend selectedMetric={selectedMetric} />
       </div>
 
