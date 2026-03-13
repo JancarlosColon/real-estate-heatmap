@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
-
-const periodOffsets: Record<string, number> = {
-  '30d': 0,
-  '90d': 2,
-  '6m': 5,
-  '1y': 11,
-  '3y': 35,
-  '5y': 59,
-};
+import { periodOffsets } from '@/app/lib/metrics-config';
 
 interface Metro {
   name: string;
@@ -44,7 +36,7 @@ export async function GET(request: NextRequest) {
   const uniqueDates = dates.map((r: { date: string }) => r.date);
   const latestDate = uniqueDates[uniqueDates.length - 1];
 
-  // Count back from the end by offset (same as getDateForPeriod in zillow-data.ts)
+  // Count back from the end by offset
   const targetIndex = Math.max(0, uniqueDates.length - 1 - offset);
   const targetDate = uniqueDates[targetIndex];
 
