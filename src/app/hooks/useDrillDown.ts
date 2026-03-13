@@ -46,7 +46,7 @@ export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricK
     try {
       const url = metric === 'heat_index'
         ? `/api/county-data?state=${stateCode}&period=${period}`
-        : `/api/metrics-data?metric=${metric}&level=county&state=${stateCode}`;
+        : `/api/metrics-data?metric=${metric}&level=county&state=${stateCode}&period=${period}`;
       const res = await fetch(url, { signal: controller.signal });
       const countyData = await res.json();
       if (!controller.signal.aborted) {
@@ -75,7 +75,7 @@ export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricK
       try {
         const url = metric === 'heat_index'
           ? `/api/zip-data?county=${encodeURIComponent(countyName)}&state=${stateCode}&period=${period}`
-          : `/api/metrics-data?metric=${metric}&level=zip&state=${stateCode}&county=${encodeURIComponent(countyName)}`;
+          : `/api/metrics-data?metric=${metric}&level=zip&state=${stateCode}&county=${encodeURIComponent(countyName)}&period=${period}`;
         const res = await fetch(url, { signal: controller.signal });
         const zipData = await res.json();
         if (!controller.signal.aborted) {

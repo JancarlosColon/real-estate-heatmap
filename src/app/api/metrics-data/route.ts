@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
+import { periodOffsets } from '@/app/lib/metrics-config';
 
-// Fetch metric data for counties or ZIPs from the unified metrics tables
-// GET /api/metrics-data?metric=zhvi&level=county&state=CA
-// GET /api/metrics-data?metric=zhvi&level=zip&state=CA&county=Los%20Angeles%20County
+// GET /api/metrics-data?metric=zhvi&level=county&state=CA&period=1y
+// GET /api/metrics-data?metric=zhvi&level=zip&state=CA&county=Los%20Angeles%20County&period=30d
 
 export async function GET(request: NextRequest) {
   const metric = request.nextUrl.searchParams.get('metric');
-  const level = request.nextUrl.searchParams.get('level'); // 'county' or 'zip'
+  const level = request.nextUrl.searchParams.get('level');
   const stateCode = request.nextUrl.searchParams.get('state');
   const countyName = request.nextUrl.searchParams.get('county');
+  const period = request.nextUrl.searchParams.get('period') || '30d';
+  const offset = periodOffsets[period] ?? 0;
 
   if (!metric || !level || !stateCode) {
     return NextResponse.json({ error: 'Missing metric, level, or state parameter' }, { status: 400 });
@@ -21,11 +23,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const table = level === 'county' ? 'county_metrics' : 'zip_metrics';
+    const idCol = level === 'county' ? 'fips' : 'zip_code';
 
-    // Get latest date for this metric
+    // Get a sample record to find available dates
     let sampleQuery = supabase
       .from(table)
-      .select('date')
+      .select(idCol)
       .eq('metric', metric)
       .eq('state_code', stateCode);
 
@@ -33,21 +36,37 @@ export async function GET(request: NextRequest) {
       sampleQuery = sampleQuery.eq('county_name', countyName);
     }
 
-    const { data: sampleRows } = await sampleQuery.order('date', { ascending: false }).limit(1);
-
+    const { data: sampleRows } = await sampleQuery.limit(1);
     if (!sampleRows || sampleRows.length === 0) {
       return NextResponse.json([]);
     }
 
-    const latestDate = sampleRows[0].date;
+    const sampleId = (sampleRows[0] as Record<string, string>)[idCol];
 
-    // Fetch data for the latest date
+    // Get all dates for this sample record
+    const { data: dateRows } = await supabase
+      .from(table)
+      .select('date')
+      .eq(idCol, sampleId)
+      .eq('metric', metric)
+      .order('date', { ascending: true });
+
+    if (!dateRows || dateRows.length === 0) {
+      return NextResponse.json([]);
+    }
+
+    const uniqueDates = [...new Set(dateRows.map((r) => r.date))].sort();
+    const latestDate = uniqueDates[uniqueDates.length - 1];
+    const targetIndex = Math.max(0, uniqueDates.length - 1 - offset);
+    const targetDate = uniqueDates[targetIndex];
+
+    // Fetch data for the target date
     let dataQuery = supabase
       .from(table)
       .select('*')
       .eq('metric', metric)
       .eq('state_code', stateCode)
-      .eq('date', latestDate);
+      .eq('date', targetDate);
 
     if (level === 'zip' && countyName) {
       dataQuery = dataQuery.eq('county_name', countyName);
@@ -57,6 +76,34 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Compute change if historical period
+    if (offset > 0 && targetDate !== latestDate && data) {
+      let latestQuery = supabase
+        .from(table)
+        .select(`${idCol}, value`)
+        .eq('metric', metric)
+        .eq('state_code', stateCode)
+        .eq('date', latestDate);
+
+      if (level === 'zip' && countyName) {
+        latestQuery = latestQuery.eq('county_name', countyName);
+      }
+
+      const { data: latestData } = await latestQuery;
+
+      if (latestData) {
+        const latestMap = new Map(
+          latestData.map((r: Record<string, unknown>) => [(r as Record<string, string>)[idCol], r.value as number])
+        );
+        for (const row of data as Record<string, unknown>[]) {
+          const latestVal = latestMap.get((row as Record<string, string>)[idCol]);
+          if (latestVal !== undefined && row.value !== null) {
+            row.change = (latestVal as number) - (row.value as number);
+          }
+        }
+      }
     }
 
     // For ZIP level, join with centroids
