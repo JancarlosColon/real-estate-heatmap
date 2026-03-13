@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { TimePeriod, MetricKey } from './types';
 import TimePeriodSelector from './components/MetricSelector';
 import MetricDropdown from './components/MetricDropdown';
+import SearchBar from './components/SearchBar';
 import DetailPanel from './components/DetailPanel';
 import Breadcrumb from './components/Breadcrumb';
 import Legend from './components/Legend';
 import { useDrillDown } from './hooks/useDrillDown';
+import { useUrlState, syncToUrl } from './hooks/useUrlState';
 
 const Globe = dynamic(() => import('./components/Globe'), {
   ssr: false,
@@ -20,8 +22,10 @@ const Globe = dynamic(() => import('./components/Globe'), {
 });
 
 export default function Home() {
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('30d');
-  const [selectedMetric, setSelectedMetric] = useState<MetricKey>('heat_index');
+  const { initialMetric, initialPeriod, initialDrillDown } = useUrlState();
+
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>(initialPeriod || '30d');
+  const [selectedMetric, setSelectedMetric] = useState<MetricKey>(initialMetric || 'heat_index');
   const {
     drillDown,
     data,
@@ -30,7 +34,23 @@ export default function Home() {
     drillToZip,
     goBack,
     resetDrillDown,
-  } = useDrillDown(selectedPeriod, selectedMetric);
+  } = useDrillDown(selectedPeriod, selectedMetric, initialDrillDown || undefined);
+
+  // Sync state to URL
+  useEffect(() => {
+    syncToUrl(drillDown, selectedMetric, selectedPeriod);
+  }, [drillDown, selectedMetric, selectedPeriod]);
+
+  // Search handlers
+  const handleSearchState = useCallback((stateCode: string, stateName: string) => {
+    drillToCounty(stateCode, stateName);
+  }, [drillToCounty]);
+
+  const handleSearchCounty = useCallback((countyName: string, fips: string, stateCode: string, stateName: string) => {
+    // First drill to county level, then to ZIP level
+    drillToCounty(stateCode, stateName);
+    setTimeout(() => drillToZip(countyName, fips, stateCode, stateName), 100);
+  }, [drillToCounty, drillToZip]);
 
   const isDetailOpen = drillDown.level !== 'state';
 
@@ -74,6 +94,15 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Search */}
+      <div className="absolute top-4 right-16 md:top-8 md:right-20 z-30 pointer-events-auto">
+        <SearchBar
+          onStateSelect={handleSearchState}
+          onCountySelect={handleSearchCounty}
+          onZipSelect={() => {}}
+        />
+      </div>
+
       <Breadcrumb
         drillDown={drillDown}
         onGoBack={goBack}
@@ -91,6 +120,7 @@ export default function Home() {
         states={data.states}
         counties={data.counties}
         zips={data.zips}
+        loading={loading}
         onClose={resetDrillDown}
         onGoBack={goBack}
         onCountyClick={drillToZip}
