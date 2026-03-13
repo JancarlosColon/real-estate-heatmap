@@ -186,68 +186,6 @@ async function seedZipData(supabase: AnySupabase) {
   return { zips: zipRows.length, rows: count, latestDate };
 }
 
-// ─── Additional Metrics ──────────────────────────────────────────
-
-const EXTRA_METRICS = [
-  { key: 'zhvi', county: `${ZILLOW_CDN}/zhvi/County_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv`, zip: `${ZILLOW_CDN}/zhvi/Zip_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv` },
-  { key: 'zori', county: `${ZILLOW_CDN}/zori/County_zori_uc_sfrcondomfr_sm_month.csv`, zip: `${ZILLOW_CDN}/zori/Zip_zori_uc_sfrcondomfr_sm_month.csv` },
-  { key: 'sale_to_list', county: `${ZILLOW_CDN}/mean_sale_to_list/County_mean_sale_to_list_uc_sfrcondo_sm_month.csv`, zip: `${ZILLOW_CDN}/mean_sale_to_list/Zip_mean_sale_to_list_uc_sfrcondo_sm_month.csv` },
-  { key: 'median_list_price', county: `${ZILLOW_CDN}/mlp/County_mlp_uc_sfrcondo_month.csv`, zip: `${ZILLOW_CDN}/mlp/Zip_mlp_uc_sfrcondo_month.csv` },
-  { key: 'median_sale_price', county: `${ZILLOW_CDN}/median_sale_price/County_median_sale_price_uc_sfrcondo_month.csv`, zip: `${ZILLOW_CDN}/median_sale_price/Zip_median_sale_price_uc_sfrcondo_month.csv` },
-  { key: 'price_cuts', county: `${ZILLOW_CDN}/perc_listings_price_cut/County_perc_listings_price_cut_uc_sfrcondo_week.csv`, zip: `${ZILLOW_CDN}/perc_listings_price_cut/Zip_perc_listings_price_cut_uc_sfrcondo_week.csv` },
-  { key: 'new_listings', county: `${ZILLOW_CDN}/new_listings/County_new_listings_uc_sfrcondo_week.csv`, zip: `${ZILLOW_CDN}/new_listings/Zip_new_listings_uc_sfrcondo_week.csv` },
-  { key: 'inventory', county: `${ZILLOW_CDN}/invt_fs/County_invt_fs_uc_sfrcondo_week.csv`, zip: `${ZILLOW_CDN}/invt_fs/Zip_invt_fs_uc_sfrcondo_week.csv` },
-];
-
-async function seedExtraMetrics(supabase: AnySupabase) {
-  const results: Record<string, unknown> = {};
-
-  for (const metric of EXTRA_METRICS) {
-    for (const level of ['county', 'zip'] as const) {
-      const url = level === 'county' ? metric.county : metric.zip;
-      const table = level === 'county' ? 'county_metrics' : 'zip_metrics';
-      const label = `${level}/${metric.key}`;
-
-      try {
-        console.log(`[CRON] ═══ ${label}: Fetching...`);
-        const res = await fetch(url);
-        if (!res.ok) { console.error(`[CRON] ${label}: Failed ${res.status}`); continue; }
-        const { headers, rows, dateColumns } = parseCSV(await res.text());
-
-        const latestDate = dateColumns[dateColumns.length - 1];
-        const latestIdx = headers.indexOf(latestDate);
-        const stateIdx = headers.indexOf('State') !== -1 ? headers.indexOf('State') : 4;
-        const metroIdx = headers.indexOf('Metro');
-
-        const dbRows: Record<string, unknown>[] = [];
-        for (const row of rows) {
-          const val = parseFloat(row[latestIdx]);
-          if (isNaN(val)) continue;
-
-          if (level === 'county') {
-            const sf = (row[headers.indexOf('StateCodeFIPS')] || '').padStart(2, '0');
-            const cf = (row[headers.indexOf('MunicipalCodeFIPS')] || '').padStart(3, '0');
-            dbRows.push({ fips: sf + cf, county_name: row[2], state_code: row[stateIdx], metro: metroIdx >= 0 ? row[metroIdx] || null : null, metric: metric.key, date: latestDate, value: val });
-          } else {
-            const cityIdx = headers.indexOf('City');
-            const countyIdx = headers.indexOf('CountyName');
-            dbRows.push({ zip_code: row[2], city: cityIdx >= 0 ? row[cityIdx] || null : null, county_name: countyIdx >= 0 ? row[countyIdx] || null : null, state_code: row[stateIdx], metro: metroIdx >= 0 ? row[metroIdx] || null : null, metric: metric.key, date: latestDate, value: val });
-          }
-        }
-
-        const conflictKey = level === 'county' ? 'fips,metric,date' : 'zip_code,metric,date';
-        const count = await batchUpsert(supabase, table, dbRows, conflictKey);
-        console.log(`[CRON] ${label}: ✓ ${count} rows (${latestDate})`);
-        results[label] = { rows: count, latestDate };
-      } catch (e) {
-        console.error(`[CRON] ${label}: ✗ ${(e as Error).message}`);
-      }
-    }
-  }
-
-  return results;
-}
-
 // ─── Route handler ───────────────────────────────────────────────
 
 export const maxDuration = 300;
@@ -287,12 +225,7 @@ export async function GET(request: NextRequest) {
     errors.push(`ZIP: ${(e as Error).message}`);
   }
 
-  try {
-    results.extraMetrics = await seedExtraMetrics(supabase);
-  } catch (e) {
-    console.error('[CRON] ✗ Extra metrics FAILED:', (e as Error).message);
-    errors.push(`Extra metrics: ${(e as Error).message}`);
-  }
+
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
