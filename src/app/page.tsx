@@ -9,7 +9,6 @@ import SearchBar from './components/SearchBar';
 import DetailPanel from './components/DetailPanel';
 import Breadcrumb from './components/Breadcrumb';
 import Legend from './components/Legend';
-import MapStyleToggle from './components/MapStyleToggle';
 import { useDrillDown } from './hooks/useDrillDown';
 import { useUrlState, syncToUrl } from './hooks/useUrlState';
 
@@ -27,7 +26,6 @@ export default function Home() {
 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>(initialPeriod || '30d');
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>(initialMetric || 'heat_index');
-  const [mapStyle, setMapStyle] = useState<'dark' | 'light'>('dark');
   const {
     drillDown,
     data,
@@ -56,7 +54,7 @@ export default function Home() {
   const isDetailOpen = drillDown.level !== 'state';
 
   return (
-    <div className={`relative w-screen h-screen overflow-hidden ${mapStyle === 'dark' ? 'bg-black' : 'bg-gray-100'}`}>
+    <div className="relative w-screen h-screen overflow-hidden bg-black">
       <Globe
         selectedPeriod={selectedPeriod}
         selectedMetric={selectedMetric}
@@ -65,18 +63,17 @@ export default function Home() {
         counties={data.counties}
         zips={data.zips}
         loading={loading}
-        mapStyle={mapStyle}
         onStateClick={drillToCounty}
         onCountyClick={drillToZip}
       />
 
-      <div className={`absolute top-0 left-0 right-0 h-32 md:h-48 bg-gradient-to-b ${mapStyle === 'dark' ? 'from-black/60' : 'from-white/60'} to-transparent pointer-events-none`} />
+      <div className="absolute top-0 left-0 right-0 h-32 md:h-48 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
 
       <div className="absolute top-4 left-4 md:top-8 md:left-8 pointer-events-none">
-        <h1 className={`text-2xl md:text-4xl font-light tracking-tight mb-1 ${mapStyle === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        <h1 className="text-2xl md:text-4xl font-light text-white tracking-tight mb-1">
           Real Estate Heatmap
         </h1>
-        <p className={`text-sm font-light tracking-wide hidden sm:block ${mapStyle === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
+        <p className="text-gray-500 text-sm font-light tracking-wide hidden sm:block">
           US Market Conditions
         </p>
       </div>
@@ -112,8 +109,7 @@ export default function Home() {
         loading={loading}
       />
 
-      <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8 flex flex-col items-end gap-2">
-        <MapStyleToggle isDark={mapStyle === 'dark'} onToggle={() => setMapStyle(s => s === 'dark' ? 'light' : 'dark')} />
+      <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8">
         <Legend selectedMetric={selectedMetric} />
       </div>
 
@@ -130,12 +126,12 @@ export default function Home() {
       />
 
       {!isDetailOpen && (
-        <div className={`absolute bottom-4 left-4 md:bottom-8 md:left-8 text-xs font-light tracking-wide hidden sm:block ${mapStyle === 'dark' ? 'text-gray-600' : 'text-gray-500'}`}>
+        <div className="absolute bottom-4 left-4 md:bottom-8 md:left-8 text-gray-600 text-xs font-light tracking-wide hidden sm:block">
           <p>Drag to rotate · Scroll to zoom · Click state to drill down</p>
         </div>
       )}
       {!isDetailOpen && (
-        <div className={`absolute bottom-4 left-4 text-xs font-light tracking-wide sm:hidden ${mapStyle === 'dark' ? 'text-gray-600' : 'text-gray-500'}`}>
+        <div className="absolute bottom-4 left-4 text-gray-600 text-xs font-light tracking-wide sm:hidden">
           <p>Tap a state to explore</p>
         </div>
       )}

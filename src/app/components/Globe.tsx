@@ -22,7 +22,6 @@ interface GlobeProps {
   counties: CountyMetric[];
   zips: ZipMetric[];
   loading: boolean;
-  mapStyle?: 'dark' | 'light';
   onStateClick: (stateCode: string, stateName: string) => void;
   onCountyClick: (countyName: string, countyFips: string, stateCode: string, stateName: string) => void;
   onZipClick?: (zip: ZipMetric) => void;
@@ -74,7 +73,6 @@ export default function Globe({
   counties,
   zips,
   loading,
-  mapStyle = 'dark',
   onStateClick,
   onCountyClick,
   onZipClick,
@@ -155,7 +153,7 @@ export default function Globe({
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: `mapbox://styles/mapbox/${mapStyle === 'light' ? 'light-v11' : 'dark-v11'}`,
+      style: 'mapbox://styles/mapbox/dark-v11',
       center: [-98, 39],
       zoom: 3.5,
       projection: 'globe',
@@ -455,44 +453,6 @@ export default function Globe({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // === MAP STYLE TOGGLE ===
-  const prevMapStyle = useRef(mapStyle);
-  useEffect(() => {
-    if (!map.current || !isMapLoaded || mapStyle === prevMapStyle.current) return;
-    prevMapStyle.current = mapStyle;
-    const m = map.current;
-    const styleUrl = `mapbox://styles/mapbox/${mapStyle === 'light' ? 'light-v11' : 'dark-v11'}`;
-    m.setStyle(styleUrl);
-    m.once('style.load', () => {
-      // Re-add sources (check first to avoid duplicates)
-      if (!m.getSource('states')) m.addSource('states', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      if (!m.getSource('counties')) m.addSource('counties', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      if (!m.getSource('zips')) m.addSource('zips', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      // Re-add layers (check first)
-      const borderColor = mapStyle === 'light' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)';
-      const strokeColor = mapStyle === 'light' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)';
-      if (!m.getLayer('states-fill')) m.addLayer({ id: 'states-fill', type: 'fill', source: 'states', paint: { 'fill-color': '#1a1a1a', 'fill-opacity': 0.4, 'fill-color-transition': { duration: 500 }, 'fill-opacity-transition': { duration: 400 } } });
-      if (!m.getLayer('states-border')) m.addLayer({ id: 'states-border', type: 'line', source: 'states', paint: { 'line-color': borderColor, 'line-width': 0.5 } });
-      if (!m.getLayer('counties-fill')) m.addLayer({ id: 'counties-fill', type: 'fill', source: 'counties', paint: { 'fill-color': '#1a1a1a', 'fill-opacity': 0, 'fill-color-transition': { duration: 500 }, 'fill-opacity-transition': { duration: 400 } } });
-      if (!m.getLayer('counties-border')) m.addLayer({ id: 'counties-border', type: 'line', source: 'counties', paint: { 'line-color': borderColor, 'line-width': 0.5, 'line-opacity': 0 } });
-      if (!m.getLayer('zips-circle')) m.addLayer({ id: 'zips-circle', type: 'circle', source: 'zips', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 4, 8, 6, 10, 10, 12, 16], 'circle-color': '#1a1a1a', 'circle-opacity': 0, 'circle-stroke-color': strokeColor, 'circle-stroke-width': 1, 'circle-color-transition': { duration: 500 }, 'circle-opacity-transition': { duration: 400 } } });
-
-      // Re-fetch state GeoJSON
-      fetch(GEO_SOURCES.states).then(r => r.json()).then(geojson => {
-        if (m.getSource('states')) (m.getSource('states') as mapboxgl.GeoJSONSource).setData(geojson);
-      });
-      // County GeoJSON if previously loaded
-      if (countyGeoJsonLoaded.current) {
-        fetch(GEO_SOURCES.counties).then(r => r.json()).then(geojson => {
-          if (m.getSource('counties')) (m.getSource('counties') as mapboxgl.GeoJSONSource).setData(geojson);
-        });
-      }
-      // Trigger color re-application
-      setIsMapLoaded(false);
-      setTimeout(() => setIsMapLoaded(true), 50);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapStyle]);
 
   // === UPDATE STATE COLORS ===
   useEffect(() => {
