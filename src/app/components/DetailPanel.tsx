@@ -230,7 +230,15 @@ function StateDetail({
 // === COUNTY DETAIL (shows ZIPs) with sparkline + YoY ===
 function CountyDetail({ county, zips, metric }: { county: CountyMetric; zips: ZipMetric[]; metric: MetricKey }) {
   const { history, yoy } = useHistory(county.fips, 'fips');
-  const color = metric === 'heat_index' ? getHeatColor(county.heat_index) : getMetricColor(county.heat_index, metric);
+
+  // Compute county average from ZIPs if county value is missing (happens at ZIP drill-down level)
+  const countyValue = county.heat_index > 0
+    ? county.heat_index
+    : zips.length > 0
+      ? Math.round(zips.reduce((sum, z) => sum + z.heat_index, 0) / zips.length)
+      : 0;
+
+  const color = metric === 'heat_index' ? getHeatColor(countyValue) : getMetricColor(countyValue, metric);
 
   return (
     <>
@@ -238,17 +246,17 @@ function CountyDetail({ county, zips, metric }: { county: CountyMetric; zips: Zi
         <div className="flex justify-between items-baseline">
           <span className="text-gray-500 text-xs tracking-wide">County Average</span>
           <div className="flex items-center gap-2">
-            <LargeValueDisplay value={county.heat_index} metric={metric} />
+            <LargeValueDisplay value={countyValue} metric={metric} />
             <YoYBadge yoy={yoy} />
           </div>
         </div>
         <div className="flex justify-between items-center mt-1">
-          <MetricLabel value={county.heat_index} metric={metric} />
+          <MetricLabel value={countyValue} metric={metric} />
           {history.length > 1 && (
             <Sparkline data={history} width={80} height={20} color={color} />
           )}
         </div>
-        <HeatBar value={county.heat_index} metric={metric} />
+        <HeatBar value={countyValue} metric={metric} />
         {county.metro && (
           <p className="text-gray-600 text-xs mt-2">{county.metro}</p>
         )}
