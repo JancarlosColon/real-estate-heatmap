@@ -92,6 +92,7 @@ export default function Home() {
         counties={data.counties}
         zips={data.zips}
         onClose={resetDrillDown}
+        onGoBack={goBack}
         onCountyClick={drillToZip}
       />
 

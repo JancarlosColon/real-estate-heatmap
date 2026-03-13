@@ -16,6 +16,7 @@ interface DetailPanelProps {
   counties: CountyMetric[];
   zips: ZipMetric[];
   onClose: () => void;
+  onGoBack: () => void;
   onCountyClick: (countyName: string, countyFips: string, stateCode: string, stateName: string) => void;
 }
 
@@ -246,6 +247,7 @@ export default function DetailPanel({
   counties,
   zips,
   onClose,
+  onGoBack,
   onCountyClick,
 }: DetailPanelProps) {
   const metricConfig = METRIC_CONFIGS[selectedMetric];
@@ -279,9 +281,20 @@ export default function DetailPanel({
       </div>
 
       <div className="flex justify-between items-start mb-4 md:mb-5">
-        <div>
-          <h2 className="text-lg md:text-xl font-light text-white tracking-tight">{title}</h2>
-          <p className="text-gray-600 text-xs tracking-wide mt-1">{subtitle}</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onGoBack}
+            className="text-gray-400 hover:text-white transition-colors p-1 -ml-1"
+            title="Go back"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+          </button>
+          <div>
+            <h2 className="text-lg md:text-xl font-light text-white tracking-tight">{title}</h2>
+            <p className="text-gray-600 text-xs tracking-wide mt-0.5">{subtitle}</p>
+          </div>
         </div>
         <button
           onClick={onClose}
