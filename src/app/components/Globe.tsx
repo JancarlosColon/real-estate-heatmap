@@ -108,11 +108,11 @@ export default function Globe({
 
   // Build county color expression (match by FIPS feature.id)
   const buildCountyColorExpression = useCallback((data: CountyMetric[]): mapboxgl.Expression => {
+    const metric = selectedMetricRef.current;
     const expression: (string | string[])[] = ['match', ['get', 'GEO_ID']];
     data.forEach((county) => {
-      // GeoJSON has GEO_ID like "0500000US06037", feature.id like "06037"
       expression.push(`0500000US${county.fips}`);
-      expression.push(getHeatColor(county.heat_index));
+      expression.push(metric === 'heat_index' ? getHeatColor(county.heat_index) : getMetricColor(county.heat_index, metric));
     });
     expression.push('#1a1a1a');
     return expression as mapboxgl.Expression;
@@ -521,7 +521,7 @@ export default function Globe({
       // Color ZIP circles
       const colorExpr: mapboxgl.Expression = [
         'match', ['get', 'zip_code'],
-        ...zips.flatMap((z) => [z.zip_code, getHeatColor(z.heat_index)]),
+        ...zips.flatMap((z) => [z.zip_code, selectedMetric === 'heat_index' ? getHeatColor(z.heat_index) : getMetricColor(z.heat_index, selectedMetric)]),
         '#1a1a1a',
       ];
 
