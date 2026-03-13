@@ -145,20 +145,28 @@ function StateDetail({
   metric: MetricKey;
   onCountyClick: DetailPanelProps['onCountyClick'];
 }) {
+  // For non-heat-index metrics, compute state average from counties
+  const isHeatIndex = metric === 'heat_index';
+  const stateAvg = isHeatIndex
+    ? state.heat_index
+    : counties.length > 0
+      ? counties.reduce((sum, c) => sum + c.heat_index, 0) / counties.length
+      : 0;
+
   return (
     <>
       <div className="mb-4 md:mb-6">
         <div className="flex justify-between items-baseline">
           <span className="text-gray-500 text-xs tracking-wide">State Average</span>
           <span>
-            <LargeValueDisplay value={state.heat_index} metric="heat_index" />
-            <ChangeIndicator change={state.change} currentValue={state.heat_index} />
+            <LargeValueDisplay value={stateAvg} metric={metric} />
+            {isHeatIndex && <ChangeIndicator change={state.change} currentValue={state.heat_index} />}
           </span>
         </div>
         <div className="mt-1">
-          <MetricLabel value={state.heat_index} metric="heat_index" />
+          <MetricLabel value={stateAvg} metric={metric} />
         </div>
-        <HeatBar value={state.heat_index} metric="heat_index" />
+        <HeatBar value={stateAvg} metric={metric} />
       </div>
 
       {counties.length > 0 && (
