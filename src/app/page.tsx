@@ -10,6 +10,7 @@ import DetailPanel from './components/DetailPanel';
 import Breadcrumb from './components/Breadcrumb';
 import Legend from './components/Legend';
 import FeedbackButton from './components/FeedbackButton';
+import AffordabilityCalculator from './components/AffordabilityCalculator';
 import { useDrillDown } from './hooks/useDrillDown';
 import { useUrlState, syncToUrl } from './hooks/useUrlState';
 
@@ -112,6 +113,12 @@ export default function Home() {
       />
 
       <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8 flex flex-col items-end gap-2">
+        <AffordabilityCalculator
+          counties={data.counties}
+          zips={data.zips}
+          selectedMetric={selectedMetric}
+          level={drillDown.level}
+        />
         <FeedbackButton />
         <Legend selectedMetric={selectedMetric} />
       </div>
