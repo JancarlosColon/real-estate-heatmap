@@ -117,9 +117,11 @@ export default function Globe({
   }, []);
 
   // Format popup HTML
-  const formatPopup = (name: string, heatIndex: number, change?: number, subtitle?: string) => {
+  const formatPopup = (name: string, value: number, change?: number, subtitle?: string) => {
+    const config = METRIC_CONFIGS[selectedMetric];
+    const formatted = formatMetricValue(value, config.format);
     const changeHtml = change && change !== 0
-      ? ` <span style="color: #6b7280; font-size: 11px;">→</span> <span style="color: ${change > 0 ? '#4ade80' : '#f87171'}; font-size: 11px;">${heatIndex + change} now</span>`
+      ? ` <span style="color: #6b7280; font-size: 11px;">→</span> <span style="color: ${change > 0 ? '#4ade80' : '#f87171'}; font-size: 11px;">${formatMetricValue(value + change, config.format)} now</span>`
       : '';
     const subtitleHtml = subtitle
       ? `<div class="text-gray-600 text-xs mt-0.5">${subtitle}</div>`
@@ -129,7 +131,7 @@ export default function Globe({
       <div class="px-4 py-3">
         <div class="font-medium text-white text-sm">${name}</div>
         ${subtitleHtml}
-        <div class="text-gray-400 text-xs mt-1">Heat Index: <span class="text-white">${heatIndex}</span>${changeHtml}</div>
+        <div class="text-gray-400 text-xs mt-1">${config.shortLabel}: <span class="text-white">${formatted}</span>${changeHtml}</div>
       </div>
     `;
   };
