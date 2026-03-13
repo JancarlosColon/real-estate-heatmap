@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 interface SearchResult {
   states: { state_code: string; state_name: string }[];
   counties: { fips: string; county_name: string; state_code: string }[];
-  zips: { zip_code: string; city: string; county_name: string; state_code: string }[];
+  zips: { zip_code: string; city: string; county_name: string; state_code: string; fips: string | null }[];
 }
 
 // Simple state_code → state_name map for county/zip results
@@ -24,7 +24,7 @@ const STATE_NAMES: Record<string, string> = {
 interface SearchBarProps {
   onStateSelect: (stateCode: string, stateName: string) => void;
   onCountySelect: (countyName: string, fips: string, stateCode: string, stateName: string) => void;
-  onZipSelect: (zipCode: string, city: string, countyName: string, stateCode: string) => void;
+  onZipSelect: (zipCode: string, city: string, countyName: string, stateCode: string, fips: string | null) => void;
 }
 
 export default function SearchBar({ onStateSelect, onCountySelect, onZipSelect }: SearchBarProps) {
@@ -168,7 +168,7 @@ export default function SearchBar({ onStateSelect, onCountySelect, onZipSelect }
                   {results.zips.map((z) => (
                     <button
                       key={z.zip_code}
-                      onClick={() => { onZipSelect(z.zip_code, z.city, z.county_name, z.state_code); close(); }}
+                      onClick={() => { onZipSelect(z.zip_code, z.city, z.county_name, z.state_code, z.fips); close(); }}
                       className="w-full text-left px-3 py-1.5 text-sm text-white/80 hover:bg-white/10 transition-colors"
                     >
                       {z.zip_code} <span className="text-white/30 text-xs">— {z.city}, {z.state_code}</span>
