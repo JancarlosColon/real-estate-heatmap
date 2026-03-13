@@ -5,11 +5,13 @@ import {
   StateMetric,
   CountyMetric,
   ZipMetric,
+  MetricKey,
 } from '../types';
-import { getHeatColor, getHeatLabel, heatColors } from '../lib/metrics-config';
+import { getHeatColor, getHeatLabel, heatColors, METRIC_CONFIGS, formatMetricValue, getMetricColor } from '../lib/metrics-config';
 
 interface DetailPanelProps {
   drillDown: DrillDownState;
+  selectedMetric: MetricKey;
   states: StateMetric[];
   counties: CountyMetric[];
   zips: ZipMetric[];
@@ -17,18 +19,41 @@ interface DetailPanelProps {
   onCountyClick: (countyName: string, countyFips: string, stateCode: string, stateName: string) => void;
 }
 
-function ChangeIndicator({ change, currentValue }: { change?: number; currentValue: number }) {
-  if (!change || change === 0) return null;
-  const now = currentValue + change;
+function ValueDisplay({ value, metric }: { value: number; metric: MetricKey }) {
+  const config = METRIC_CONFIGS[metric];
+  const color = metric === 'heat_index' ? getHeatColor(value) : getMetricColor(value, metric);
+  const formatted = formatMetricValue(value, config.format);
   return (
-    <span className="text-xs ml-1.5">
-      <span className="text-gray-500">→</span>{' '}
-      <span className={change > 0 ? 'text-green-400' : 'text-red-400'}>{now} now</span>
+    <span className="text-sm font-medium" style={{ color }}>
+      {formatted}
     </span>
   );
 }
 
-function HeatBar({ value }: { value: number }) {
+function LargeValueDisplay({ value, metric }: { value: number; metric: MetricKey }) {
+  const config = METRIC_CONFIGS[metric];
+  const color = metric === 'heat_index' ? getHeatColor(value) : getMetricColor(value, metric);
+  const formatted = formatMetricValue(value, config.format);
+  return (
+    <span className="text-xl md:text-2xl font-light" style={{ color }}>
+      {formatted}
+    </span>
+  );
+}
+
+function MetricLabel({ value, metric }: { value: number; metric: MetricKey }) {
+  if (metric === 'heat_index') {
+    return (
+      <span className="text-sm" style={{ color: getHeatColor(value) }}>
+        {getHeatLabel(value)}
+      </span>
+    );
+  }
+  return null;
+}
+
+function HeatBar({ value, metric }: { value: number; metric: MetricKey }) {
+  if (metric !== 'heat_index') return null;
   return (
     <div className="h-1.5 bg-gray-800/60 rounded-full overflow-hidden mt-2">
       <div
@@ -42,14 +67,27 @@ function HeatBar({ value }: { value: number }) {
   );
 }
 
-// === STATE DETAIL (shows metros) ===
+function ChangeIndicator({ change, currentValue }: { change?: number; currentValue: number }) {
+  if (!change || change === 0) return null;
+  const now = currentValue + change;
+  return (
+    <span className="text-xs ml-1.5">
+      <span className="text-gray-500">→</span>{' '}
+      <span className={change > 0 ? 'text-green-400' : 'text-red-400'}>{now} now</span>
+    </span>
+  );
+}
+
+// === STATE DETAIL (shows counties) ===
 function StateDetail({
   state,
   counties,
+  metric,
   onCountyClick,
 }: {
   state: StateMetric;
   counties: CountyMetric[];
+  metric: MetricKey;
   onCountyClick: DetailPanelProps['onCountyClick'];
 }) {
   return (
@@ -58,21 +96,16 @@ function StateDetail({
         <div className="flex justify-between items-baseline">
           <span className="text-gray-500 text-xs tracking-wide">State Average</span>
           <span>
-            <span className="text-xl md:text-2xl font-light" style={{ color: getHeatColor(state.heat_index) }}>
-              {state.heat_index}
-            </span>
+            <LargeValueDisplay value={state.heat_index} metric="heat_index" />
             <ChangeIndicator change={state.change} currentValue={state.heat_index} />
           </span>
         </div>
         <div className="mt-1">
-          <span className="text-sm" style={{ color: getHeatColor(state.heat_index) }}>
-            {getHeatLabel(state.heat_index)}
-          </span>
+          <MetricLabel value={state.heat_index} metric="heat_index" />
         </div>
-        <HeatBar value={state.heat_index} />
+        <HeatBar value={state.heat_index} metric="heat_index" />
       </div>
 
-      {/* County list */}
       {counties.length > 0 && (
         <div>
           <h3 className="text-gray-400 text-xs tracking-wide mb-3 uppercase">
@@ -95,26 +128,23 @@ function StateDetail({
                     </span>
                     <div className="flex items-center gap-2">
                       <span>
-                        <span className="text-sm font-medium" style={{ color: getHeatColor(county.heat_index) }}>
-                          {county.heat_index}
-                        </span>
-                        <ChangeIndicator change={county.change} currentValue={county.heat_index} />
+                        <ValueDisplay value={county.heat_index} metric={metric} />
+                        {metric === 'heat_index' && (
+                          <ChangeIndicator change={county.change} currentValue={county.heat_index} />
+                        )}
                       </span>
                       <svg className="w-3.5 h-3.5 text-gray-600 group-hover:text-gray-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
                   </div>
-                  <span className="text-xs" style={{ color: getHeatColor(county.heat_index) }}>
-                    {getHeatLabel(county.heat_index)}
-                  </span>
+                  <MetricLabel value={county.heat_index} metric={metric} />
                 </button>
               ))}
           </div>
         </div>
       )}
 
-      {/* Metro breakdown (from existing data) */}
       {counties.length === 0 && state.metros && state.metros.length > 0 && (
         <div>
           <h3 className="text-gray-400 text-xs tracking-wide mb-3 uppercase">
@@ -128,15 +158,11 @@ function StateDetail({
                     {metro.name.replace(`, ${state.state_code}`, '')}
                   </span>
                   <span>
-                    <span className="text-sm font-medium" style={{ color: getHeatColor(metro.heat_index) }}>
-                      {metro.heat_index}
-                    </span>
+                    <ValueDisplay value={metro.heat_index} metric="heat_index" />
                     <ChangeIndicator change={metro.change} currentValue={metro.heat_index} />
                   </span>
                 </div>
-                <span className="text-xs" style={{ color: getHeatColor(metro.heat_index) }}>
-                  {getHeatLabel(metro.heat_index)}
-                </span>
+                <MetricLabel value={metro.heat_index} metric="heat_index" />
               </div>
             ))}
           </div>
@@ -147,31 +173,28 @@ function StateDetail({
 }
 
 // === COUNTY DETAIL (shows ZIPs) ===
-function CountyDetail({ county, zips }: { county: CountyMetric; zips: ZipMetric[] }) {
+function CountyDetail({ county, zips, metric }: { county: CountyMetric; zips: ZipMetric[]; metric: MetricKey }) {
   return (
     <>
       <div className="mb-4 md:mb-6">
         <div className="flex justify-between items-baseline">
           <span className="text-gray-500 text-xs tracking-wide">County Average</span>
           <span>
-            <span className="text-xl md:text-2xl font-light" style={{ color: getHeatColor(county.heat_index) }}>
-              {county.heat_index}
-            </span>
-            <ChangeIndicator change={county.change} currentValue={county.heat_index} />
+            <LargeValueDisplay value={county.heat_index} metric={metric} />
+            {metric === 'heat_index' && (
+              <ChangeIndicator change={county.change} currentValue={county.heat_index} />
+            )}
           </span>
         </div>
         <div className="mt-1">
-          <span className="text-sm" style={{ color: getHeatColor(county.heat_index) }}>
-            {getHeatLabel(county.heat_index)}
-          </span>
+          <MetricLabel value={county.heat_index} metric={metric} />
         </div>
-        <HeatBar value={county.heat_index} />
+        <HeatBar value={county.heat_index} metric={metric} />
         {county.metro && (
           <p className="text-gray-600 text-xs mt-2">{county.metro}</p>
         )}
       </div>
 
-      {/* ZIP list */}
       {zips.length > 0 && (
         <div>
           <h3 className="text-gray-400 text-xs tracking-wide mb-3 uppercase">
@@ -193,15 +216,13 @@ function CountyDetail({ county, zips }: { county: CountyMetric; zips: ZipMetric[
                       )}
                     </div>
                     <span>
-                      <span className="text-sm font-medium" style={{ color: getHeatColor(zip.heat_index) }}>
-                        {zip.heat_index}
-                      </span>
-                      <ChangeIndicator change={zip.change} currentValue={zip.heat_index} />
+                      <ValueDisplay value={zip.heat_index} metric={metric} />
+                      {metric === 'heat_index' && (
+                        <ChangeIndicator change={zip.change} currentValue={zip.heat_index} />
+                      )}
                     </span>
                   </div>
-                  <span className="text-xs" style={{ color: getHeatColor(zip.heat_index) }}>
-                    {getHeatLabel(zip.heat_index)}
-                  </span>
+                  <MetricLabel value={zip.heat_index} metric={metric} />
                 </div>
               ))}
           </div>
@@ -210,7 +231,7 @@ function CountyDetail({ county, zips }: { county: CountyMetric; zips: ZipMetric[
 
       {zips.length === 0 && (
         <div className="text-gray-600 text-sm text-center py-6">
-          No ZIP-level data available for this county
+          No data available for this county
         </div>
       )}
     </>
@@ -220,18 +241,19 @@ function CountyDetail({ county, zips }: { county: CountyMetric; zips: ZipMetric[
 // === MAIN PANEL ===
 export default function DetailPanel({
   drillDown,
+  selectedMetric,
   states,
   counties,
   zips,
   onClose,
   onCountyClick,
 }: DetailPanelProps) {
+  const metricConfig = METRIC_CONFIGS[selectedMetric];
+
   if (drillDown.level === 'state') return null;
 
-  // Find the relevant state
   const state = states.find((s) => s.state_code === drillDown.stateCode);
 
-  // For ZIP view, find the selected county
   const selectedCounty = drillDown.level === 'zip' && drillDown.countyFips
     ? counties.find((c) => c.fips === drillDown.countyFips) || {
         fips: drillDown.countyFips,
@@ -252,7 +274,6 @@ export default function DetailPanel({
 
   return (
     <div className="absolute bottom-0 left-0 right-0 md:bottom-8 md:left-8 md:right-auto bg-black/80 backdrop-blur-xl rounded-t-2xl md:rounded-2xl p-4 md:p-6 md:w-80 max-h-[60vh] md:max-h-[70vh] overflow-y-auto border border-white/10 z-20">
-      {/* Drag handle - mobile only */}
       <div className="flex justify-center mb-3 md:hidden">
         <div className="w-10 h-1 rounded-full bg-white/20" />
       </div>
@@ -276,17 +297,18 @@ export default function DetailPanel({
         <StateDetail
           state={state}
           counties={counties}
+          metric={selectedMetric}
           onCountyClick={(countyName, fips, stateCode, _stateName) =>
             onCountyClick(countyName, fips, stateCode, drillDown.stateName || _stateName)
           }
         />
       ) : drillDown.level === 'zip' && selectedCounty ? (
-        <CountyDetail county={selectedCounty} zips={zips} />
+        <CountyDetail county={selectedCounty} zips={zips} metric={selectedMetric} />
       ) : null}
 
       <div className="mt-4 md:mt-5 pt-3 md:pt-4 border-t border-white/5">
         <p className="text-gray-600 text-xs tracking-wide">
-          Source: Zillow Market Heat Index
+          Source: Zillow {metricConfig.label}
         </p>
       </div>
     </div>

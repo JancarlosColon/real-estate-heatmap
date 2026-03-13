@@ -1,4 +1,4 @@
-import { TimePeriodConfig, TimePeriod } from '../types';
+import { TimePeriodConfig, TimePeriod, MetricConfig, MetricKey } from '../types';
 
 export const timePeriodsConfig: Record<TimePeriod, TimePeriodConfig> = {
   '30d': {
@@ -83,3 +83,141 @@ export const periodOffsets: Record<string, number> = {
   '3y': 35,
   '5y': 59,
 };
+
+// ─── Metric Definitions ─────────────────────────────────────────
+
+export const METRIC_CONFIGS: Record<MetricKey, MetricConfig> = {
+  heat_index: {
+    key: 'heat_index',
+    label: 'Market Heat Index',
+    shortLabel: 'Heat Index',
+    format: 'index',
+    colorScale: 'heat',
+    description: 'Market temperature from cool (buyer\'s) to hot (seller\'s)',
+  },
+  zhvi: {
+    key: 'zhvi',
+    label: 'Home Value (ZHVI)',
+    shortLabel: 'Home Value',
+    format: 'currency',
+    colorScale: 'price',
+    description: 'Zillow Home Value Index — typical home value',
+  },
+  zori: {
+    key: 'zori',
+    label: 'Rent Index (ZORI)',
+    shortLabel: 'Rent',
+    format: 'currency',
+    colorScale: 'price',
+    description: 'Zillow Observed Rent Index — typical monthly rent',
+  },
+  sale_to_list: {
+    key: 'sale_to_list',
+    label: 'Sale-to-List Ratio',
+    shortLabel: 'Sale/List',
+    format: 'ratio',
+    colorScale: 'heat',
+    description: 'Ratio of sale price to list price (>1 = over asking)',
+  },
+  median_list_price: {
+    key: 'median_list_price',
+    label: 'Median List Price',
+    shortLabel: 'List Price',
+    format: 'currency',
+    colorScale: 'price',
+    description: 'Median listing price for homes on the market',
+  },
+  median_sale_price: {
+    key: 'median_sale_price',
+    label: 'Median Sale Price',
+    shortLabel: 'Sale Price',
+    format: 'currency',
+    colorScale: 'price',
+    description: 'Median sale price of recently sold homes',
+  },
+  price_cuts: {
+    key: 'price_cuts',
+    label: 'Price Cuts',
+    shortLabel: 'Price Cuts',
+    format: 'percent',
+    colorScale: 'percent',
+    description: 'Percentage of listings with a price reduction',
+  },
+  new_listings: {
+    key: 'new_listings',
+    label: 'New Listings',
+    shortLabel: 'New Listings',
+    format: 'count',
+    colorScale: 'inventory',
+    description: 'Number of new listings added this period',
+  },
+  inventory: {
+    key: 'inventory',
+    label: 'Active Inventory',
+    shortLabel: 'Inventory',
+    format: 'count',
+    colorScale: 'inventory',
+    description: 'Total number of active for-sale listings',
+  },
+};
+
+export const METRIC_KEYS = Object.keys(METRIC_CONFIGS) as MetricKey[];
+
+// Format a metric value for display
+export function formatMetricValue(value: number | null, format: MetricConfig['format']): string {
+  if (value === null || value === undefined) return 'N/A';
+  switch (format) {
+    case 'currency':
+      return value >= 1000000
+        ? `$${(value / 1000000).toFixed(1)}M`
+        : value >= 1000
+          ? `$${(value / 1000).toFixed(0)}K`
+          : `$${value.toFixed(0)}`;
+    case 'percent':
+      return `${(value * 100).toFixed(1)}%`;
+    case 'ratio':
+      return value.toFixed(3);
+    case 'count':
+      return value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toFixed(0);
+    case 'index':
+    default:
+      return Math.round(value).toString();
+  }
+}
+
+// Get color for any metric value
+export function getMetricColor(value: number, metricKey: MetricKey): string {
+  const config = METRIC_CONFIGS[metricKey];
+  switch (config.colorScale) {
+    case 'heat':
+      return getHeatColor(value);
+    case 'price': {
+      // Blue (low) → Purple (mid) → Red (high) for price metrics
+      // Normalize based on rough US ranges
+      const ranges: Record<string, [number, number]> = {
+        zhvi: [100000, 800000],
+        zori: [800, 3000],
+        median_list_price: [100000, 1000000],
+        median_sale_price: [100000, 800000],
+      };
+      const [min, max] = ranges[metricKey] || [0, 1000000];
+      const norm = Math.max(0, Math.min(1, (value - min) / (max - min)));
+      const priceColors = ['#93c5fd', '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb7185', '#ef4444'];
+      return priceColors[Math.floor(norm * (priceColors.length - 1))];
+    }
+    case 'percent': {
+      // Green (low cuts) → Yellow → Red (many cuts)
+      const norm = Math.max(0, Math.min(1, value / 0.4)); // 0-40% range
+      const cutColors = ['#4ade80', '#a3e635', '#facc15', '#fb923c', '#f87171', '#ef4444', '#dc2626', '#b91c1c'];
+      return cutColors[Math.floor(norm * (cutColors.length - 1))];
+    }
+    case 'inventory': {
+      // Teal (low) → Blue (mid) → Purple (high)
+      const norm = Math.max(0, Math.min(1, value / 2000));
+      const invColors = ['#5eead4', '#2dd4bf', '#14b8a6', '#0d9488', '#0f766e', '#115e59', '#134e4a', '#042f2e'];
+      return invColors[Math.floor(norm * (invColors.length - 1))];
+    }
+    default:
+      return getHeatColor(value);
+  }
+}
