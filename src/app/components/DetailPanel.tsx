@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import {
   DrillDownState,
   StateMetric,
@@ -8,6 +9,7 @@ import {
   MetricKey,
 } from '../types';
 import { getHeatColor, getHeatLabel, heatColors, METRIC_CONFIGS, formatMetricValue, getMetricColor } from '../lib/metrics-config';
+import Sparkline from './Sparkline';
 
 interface DetailPanelProps {
   drillDown: DrillDownState;
@@ -19,6 +21,26 @@ interface DetailPanelProps {
   onClose: () => void;
   onGoBack: () => void;
   onCountyClick: (countyName: string, countyFips: string, stateCode: string, stateName: string) => void;
+}
+
+// --- Sparkline/YoY data hook ---
+function useHistory(id: string | null, type: 'fips' | 'zip') {
+  const [history, setHistory] = useState<number[]>([]);
+  const [yoy, setYoy] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!id) { setHistory([]); setYoy(null); return; }
+    const param = type === 'fips' ? `fips=${id}` : `zip=${id}`;
+    fetch(`/api/history?${param}`)
+      .then(r => r.json())
+      .then(d => {
+        setHistory((d.history || []).map((h: { heat_index: number }) => h.heat_index));
+        setYoy(d.yoy ?? null);
+      })
+      .catch(() => { setHistory([]); setYoy(null); });
+  }, [id, type]);
+
+  return { history, yoy };
 }
 
 function LoadingSkeleton() {
@@ -58,6 +80,18 @@ function LargeValueDisplay({ value, metric }: { value: number; metric: MetricKey
   return (
     <span className="text-xl md:text-2xl font-light" style={{ color }}>
       {formatted}
+    </span>
+  );
+}
+
+function YoYBadge({ yoy }: { yoy: number | null }) {
+  if (yoy === null || yoy === 0) return null;
+  const isUp = yoy > 0;
+  return (
+    <span className={`inline-flex items-center ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+      isUp ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+    }`}>
+      {isUp ? '↑' : '↓'}{Math.abs(yoy)} YoY
     </span>
   );
 }
@@ -193,22 +227,26 @@ function StateDetail({
   );
 }
 
-// === COUNTY DETAIL (shows ZIPs) ===
+// === COUNTY DETAIL (shows ZIPs) with sparkline + YoY ===
 function CountyDetail({ county, zips, metric }: { county: CountyMetric; zips: ZipMetric[]; metric: MetricKey }) {
+  const { history, yoy } = useHistory(county.fips, 'fips');
+  const color = metric === 'heat_index' ? getHeatColor(county.heat_index) : getMetricColor(county.heat_index, metric);
+
   return (
     <>
       <div className="mb-4 md:mb-6">
         <div className="flex justify-between items-baseline">
           <span className="text-gray-500 text-xs tracking-wide">County Average</span>
-          <span>
+          <div className="flex items-center gap-2">
             <LargeValueDisplay value={county.heat_index} metric={metric} />
-            {metric === 'heat_index' && (
-              <ChangeIndicator change={county.change} currentValue={county.heat_index} />
-            )}
-          </span>
+            <YoYBadge yoy={yoy} />
+          </div>
         </div>
-        <div className="mt-1">
+        <div className="flex justify-between items-center mt-1">
           <MetricLabel value={county.heat_index} metric={metric} />
+          {history.length > 1 && (
+            <Sparkline data={history} width={80} height={20} color={color} />
+          )}
         </div>
         <HeatBar value={county.heat_index} metric={metric} />
         {county.metro && (
