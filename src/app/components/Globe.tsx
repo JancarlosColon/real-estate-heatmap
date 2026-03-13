@@ -523,7 +523,9 @@ export default function Globe({
         })),
       };
 
-      (map.current.getSource('zips') as mapboxgl.GeoJSONSource).setData(geojson);
+      const zipsSource = map.current.getSource('zips') as mapboxgl.GeoJSONSource | undefined;
+      if (!zipsSource) return;
+      zipsSource.setData(geojson);
 
       // Color ZIP circles
       const colorExpr: mapboxgl.Expression = [
@@ -532,6 +534,7 @@ export default function Globe({
         '#1a1a1a',
       ];
 
+      if (!map.current.getLayer('zips-circle')) return;
       map.current.setPaintProperty('zips-circle', 'circle-color', colorExpr);
       map.current.setPaintProperty('zips-circle', 'circle-opacity', 0.85);
       map.current.setPaintProperty('zips-circle', 'circle-stroke-opacity', 1);
