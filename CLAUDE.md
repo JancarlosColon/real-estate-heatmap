@@ -49,7 +49,8 @@ Required in `.env.local`:
 NEXT_PUBLIC_MAPBOX_TOKEN=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=       # Only needed for seed script, never exposed to client
+SUPABASE_SERVICE_ROLE_KEY=       # Only needed for seed script + cron, never exposed to client
+CRON_SECRET=                     # Vercel Cron auth token (set in Vercel env vars)
 ```
 
 ## Database Schema (Supabase)

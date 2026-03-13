@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { StateMetric, TimePeriod } from './types';
+import { TimePeriod } from './types';
 import TimePeriodSelector from './components/MetricSelector';
-import StateInfoPanel from './components/StateInfoPanel';
+import DetailPanel from './components/DetailPanel';
+import Breadcrumb from './components/Breadcrumb';
 import Legend from './components/Legend';
+import { useDrillDown } from './hooks/useDrillDown';
 
 const Globe = dynamic(() => import('./components/Globe'), {
   ssr: false,
@@ -18,14 +20,29 @@ const Globe = dynamic(() => import('./components/Globe'), {
 
 export default function Home() {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('30d');
-  const [selectedState, setSelectedState] = useState<StateMetric | null>(null);
+  const {
+    drillDown,
+    data,
+    loading,
+    drillToCounty,
+    drillToZip,
+    goBack,
+    resetDrillDown,
+  } = useDrillDown(selectedPeriod);
+
+  const isDetailOpen = drillDown.level !== 'state';
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-black">
       <Globe
         selectedPeriod={selectedPeriod}
-        selectedState={selectedState}
-        onStateSelect={setSelectedState}
+        drillDown={drillDown}
+        states={data.states}
+        counties={data.counties}
+        zips={data.zips}
+        loading={loading}
+        onStateClick={drillToCounty}
+        onCountyClick={drillToZip}
       />
 
       <div className="absolute top-0 left-0 right-0 h-32 md:h-48 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
@@ -48,23 +65,34 @@ export default function Home() {
         </div>
       </div>
 
+      <Breadcrumb
+        drillDown={drillDown}
+        onGoBack={goBack}
+        onReset={resetDrillDown}
+        loading={loading}
+      />
+
       <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8">
         <Legend />
       </div>
 
-      <StateInfoPanel
-        state={selectedState}
-        onClose={() => setSelectedState(null)}
+      <DetailPanel
+        drillDown={drillDown}
+        states={data.states}
+        counties={data.counties}
+        zips={data.zips}
+        onClose={resetDrillDown}
+        onCountyClick={drillToZip}
       />
 
-      {!selectedState && (
+      {!isDetailOpen && (
         <div className="absolute bottom-4 left-4 md:bottom-8 md:left-8 text-gray-600 text-xs font-light tracking-wide hidden sm:block">
-          <p>Drag to rotate · Scroll to zoom · Click state for details</p>
+          <p>Drag to rotate · Scroll to zoom · Click state to drill down</p>
         </div>
       )}
-      {!selectedState && (
+      {!isDetailOpen && (
         <div className="absolute bottom-4 left-4 text-gray-600 text-xs font-light tracking-wide sm:hidden">
-          <p>Tap a state for details</p>
+          <p>Tap a state to explore</p>
         </div>
       )}
     </div>
