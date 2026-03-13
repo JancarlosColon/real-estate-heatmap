@@ -15,9 +15,29 @@ interface DetailPanelProps {
   states: StateMetric[];
   counties: CountyMetric[];
   zips: ZipMetric[];
+  loading: boolean;
   onClose: () => void;
   onGoBack: () => void;
   onCountyClick: (countyName: string, countyFips: string, stateCode: string, stateName: string) => void;
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="flex justify-between">
+        <div className="h-3 w-20 bg-white/10 rounded" />
+        <div className="h-6 w-12 bg-white/10 rounded" />
+      </div>
+      <div className="h-1.5 w-full bg-white/10 rounded-full" />
+      <div className="h-3 w-24 bg-white/10 rounded mt-4" />
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="flex justify-between py-2">
+          <div className="h-3 bg-white/10 rounded" style={{ width: `${60 + Math.random() * 30}%` }} />
+          <div className="h-3 w-12 bg-white/10 rounded" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function ValueDisplay({ value, metric }: { value: number; metric: MetricKey }) {
@@ -246,6 +266,7 @@ export default function DetailPanel({
   states,
   counties,
   zips,
+  loading,
   onClose,
   onGoBack,
   onCountyClick,
@@ -306,7 +327,9 @@ export default function DetailPanel({
         </button>
       </div>
 
-      {drillDown.level === 'county' && state ? (
+      {loading ? (
+        <LoadingSkeleton />
+      ) : drillDown.level === 'county' && state ? (
         <StateDetail
           state={state}
           counties={counties}
