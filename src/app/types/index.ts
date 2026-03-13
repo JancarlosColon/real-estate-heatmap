@@ -45,6 +45,18 @@ export interface TimePeriodConfig {
   label: string;
 }
 
+// Metric types
+export type MetricKey = 'heat_index' | 'zhvi' | 'zori' | 'sale_to_list' | 'median_list_price' | 'median_sale_price' | 'price_cuts' | 'new_listings' | 'inventory';
+
+export interface MetricConfig {
+  key: MetricKey;
+  label: string;
+  shortLabel: string;
+  format: 'index' | 'currency' | 'percent' | 'ratio' | 'count';
+  colorScale: 'heat' | 'price' | 'percent' | 'inventory';
+  description: string;
+}
+
 // Navigation breadcrumb for drill-down
 export interface DrillDownState {
   level: GeoLevel;

@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   GeoLevel,
   TimePeriod,
+  MetricKey,
   StateMetric,
   CountyMetric,
   ZipMetric,
@@ -16,7 +17,7 @@ interface DrillDownData {
   zips: ZipMetric[];
 }
 
-export function useDrillDown(selectedPeriod: TimePeriod) {
+export function useDrillDown(selectedPeriod: TimePeriod, selectedMetric: MetricKey = 'heat_index') {
   const [drillDown, setDrillDown] = useState<DrillDownState>({ level: 'state' });
   const [data, setData] = useState<DrillDownData>({ states: [], counties: [], zips: [] });
   const [loading, setLoading] = useState(false);
@@ -44,18 +45,25 @@ export function useDrillDown(selectedPeriod: TimePeriod) {
   }, []);
 
   // Fetch county-level data for a state
-  const fetchCounties = useCallback(async (stateCode: string, period: TimePeriod) => {
+  const fetchCounties = useCallback(async (stateCode: string, period: TimePeriod, metric: MetricKey = 'heat_index') => {
     setLoading(true);
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      const res = await fetch(`/api/county-data?state=${stateCode}&period=${period}`, {
-        signal: controller.signal,
-      });
+      const url = metric === 'heat_index'
+        ? `/api/county-data?state=${stateCode}&period=${period}`
+        : `/api/metrics-data?metric=${metric}&level=county&state=${stateCode}`;
+      const res = await fetch(url, { signal: controller.signal });
       const countyData = await res.json();
       if (!controller.signal.aborted) {
+        // Normalize metrics-data response to match CountyMetric shape
+        if (metric !== 'heat_index') {
+          for (const row of countyData) {
+            row.heat_index = row.value;
+          }
+        }
         setData((prev) => ({ ...prev, counties: countyData }));
         setLoading(false);
       }
@@ -69,19 +77,24 @@ export function useDrillDown(selectedPeriod: TimePeriod) {
 
   // Fetch ZIP-level data for a county
   const fetchZips = useCallback(
-    async (countyName: string, stateCode: string, period: TimePeriod) => {
+    async (countyName: string, stateCode: string, period: TimePeriod, metric: MetricKey = 'heat_index') => {
       setLoading(true);
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
       try {
-        const res = await fetch(
-          `/api/zip-data?county=${encodeURIComponent(countyName)}&state=${stateCode}&period=${period}`,
-          { signal: controller.signal }
-        );
+        const url = metric === 'heat_index'
+          ? `/api/zip-data?county=${encodeURIComponent(countyName)}&state=${stateCode}&period=${period}`
+          : `/api/metrics-data?metric=${metric}&level=zip&state=${stateCode}&county=${encodeURIComponent(countyName)}`;
+        const res = await fetch(url, { signal: controller.signal });
         const zipData = await res.json();
         if (!controller.signal.aborted) {
+          if (metric !== 'heat_index') {
+            for (const row of zipData) {
+              row.heat_index = row.value;
+            }
+          }
           setData((prev) => ({ ...prev, zips: zipData }));
           setLoading(false);
         }
@@ -100,14 +113,14 @@ export function useDrillDown(selectedPeriod: TimePeriod) {
     fetchStates(selectedPeriod);
   }, [selectedPeriod, fetchStates]);
 
-  // Refetch current drill-down level when period changes
+  // Refetch current drill-down level when period or metric changes
   useEffect(() => {
     if (drillDown.level === 'county' && drillDown.stateCode) {
-      fetchCounties(drillDown.stateCode, selectedPeriod);
+      fetchCounties(drillDown.stateCode, selectedPeriod, selectedMetric);
     } else if (drillDown.level === 'zip' && drillDown.countyName && drillDown.stateCode) {
-      fetchZips(drillDown.countyName, drillDown.stateCode, selectedPeriod);
+      fetchZips(drillDown.countyName, drillDown.stateCode, selectedPeriod, selectedMetric);
     }
-  }, [selectedPeriod, drillDown, fetchCounties, fetchZips]);
+  }, [selectedPeriod, selectedMetric, drillDown, fetchCounties, fetchZips]);
 
   // Navigate to state view (click on a state from globe)
   const drillToCounty = useCallback(
@@ -117,9 +130,9 @@ export function useDrillDown(selectedPeriod: TimePeriod) {
         stateCode,
         stateName,
       });
-      fetchCounties(stateCode, selectedPeriod);
+      fetchCounties(stateCode, selectedPeriod, selectedMetric);
     },
-    [selectedPeriod, fetchCounties]
+    [selectedPeriod, selectedMetric, fetchCounties]
   );
 
   // Navigate to ZIP view (click on a county)
@@ -132,9 +145,9 @@ export function useDrillDown(selectedPeriod: TimePeriod) {
         countyName,
         countyFips,
       });
-      fetchZips(countyName, stateCode, selectedPeriod);
+      fetchZips(countyName, stateCode, selectedPeriod, selectedMetric);
     },
-    [selectedPeriod, fetchZips]
+    [selectedPeriod, selectedMetric, fetchZips]
   );
 
   // Navigate back
@@ -147,14 +160,14 @@ export function useDrillDown(selectedPeriod: TimePeriod) {
         stateName: drillDown.stateName,
       });
       if (drillDown.stateCode) {
-        fetchCounties(drillDown.stateCode, selectedPeriod);
+        fetchCounties(drillDown.stateCode, selectedPeriod, selectedMetric);
       }
     } else if (drillDown.level === 'county') {
       // Go back to state view
       setDrillDown({ level: 'state' });
       setData((prev) => ({ ...prev, counties: [], zips: [] }));
     }
-  }, [drillDown, selectedPeriod, fetchCounties]);
+  }, [drillDown, selectedPeriod, selectedMetric, fetchCounties]);
 
   // Reset to top level
   const resetDrillDown = useCallback(() => {

@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { TimePeriod } from './types';
+import { TimePeriod, MetricKey } from './types';
 import TimePeriodSelector from './components/MetricSelector';
+import MetricDropdown from './components/MetricDropdown';
 import DetailPanel from './components/DetailPanel';
 import Breadcrumb from './components/Breadcrumb';
 import Legend from './components/Legend';
@@ -20,6 +21,7 @@ const Globe = dynamic(() => import('./components/Globe'), {
 
 export default function Home() {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('30d');
+  const [selectedMetric, setSelectedMetric] = useState<MetricKey>('heat_index');
   const {
     drillDown,
     data,
@@ -28,7 +30,7 @@ export default function Home() {
     drillToZip,
     goBack,
     resetDrillDown,
-  } = useDrillDown(selectedPeriod);
+  } = useDrillDown(selectedPeriod, selectedMetric);
 
   const isDetailOpen = drillDown.level !== 'state';
 
@@ -36,6 +38,7 @@ export default function Home() {
     <div className="relative w-screen h-screen overflow-hidden bg-black">
       <Globe
         selectedPeriod={selectedPeriod}
+        selectedMetric={selectedMetric}
         drillDown={drillDown}
         states={data.states}
         counties={data.counties}
@@ -56,7 +59,13 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="absolute top-14 md:top-8 left-4 right-4 md:left-0 md:right-0 flex justify-center pointer-events-none">
+      <div className="absolute top-14 md:top-8 left-4 right-4 md:left-0 md:right-0 flex justify-center items-center gap-3 pointer-events-none">
+        <div className="pointer-events-auto">
+          <MetricDropdown
+            selectedMetric={selectedMetric}
+            onMetricChange={setSelectedMetric}
+          />
+        </div>
         <div className="pointer-events-auto">
           <TimePeriodSelector
             selectedPeriod={selectedPeriod}
@@ -78,6 +87,7 @@ export default function Home() {
 
       <DetailPanel
         drillDown={drillDown}
+        selectedMetric={selectedMetric}
         states={data.states}
         counties={data.counties}
         zips={data.zips}

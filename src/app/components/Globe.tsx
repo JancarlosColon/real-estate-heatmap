@@ -6,15 +6,17 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import {
   GeoLevel,
   TimePeriod,
+  MetricKey,
   StateMetric,
   CountyMetric,
   ZipMetric,
   DrillDownState,
 } from '../types';
-import { heatColors, getHeatColor, GEO_SOURCES } from '../lib/metrics-config';
+import { heatColors, getHeatColor, getMetricColor, GEO_SOURCES, METRIC_CONFIGS, formatMetricValue } from '../lib/metrics-config';
 
 interface GlobeProps {
   selectedPeriod: TimePeriod;
+  selectedMetric: MetricKey;
   drillDown: DrillDownState;
   states: StateMetric[];
   counties: CountyMetric[];
@@ -65,6 +67,7 @@ const STATE_ZOOM: Record<string, number> = {
 
 export default function Globe({
   selectedPeriod,
+  selectedMetric,
   drillDown,
   states,
   counties,
