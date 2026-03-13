@@ -92,6 +92,8 @@ export default function Globe({
   useEffect(() => { countiesRef.current = counties; }, [counties]);
   useEffect(() => { zipsRef.current = zips; }, [zips]);
   useEffect(() => { drillDownRef.current = drillDown; }, [drillDown]);
+  const selectedMetricRef = useRef<MetricKey>(selectedMetric);
+  useEffect(() => { selectedMetricRef.current = selectedMetric; }, [selectedMetric]);
 
   // Build state color expression
   const buildStateColorExpression = useCallback((data: StateMetric[]): mapboxgl.Expression => {
@@ -116,9 +118,10 @@ export default function Globe({
     return expression as mapboxgl.Expression;
   }, []);
 
-  // Format popup HTML
-  const formatPopup = (name: string, value: number, change?: number, subtitle?: string) => {
-    const config = METRIC_CONFIGS[selectedMetric];
+  // Format popup HTML — metricOverride forces a specific metric (e.g. state level always shows heat_index)
+  const formatPopup = (name: string, value: number, change?: number, subtitle?: string, metricOverride?: MetricKey) => {
+    const metric = metricOverride || selectedMetricRef.current;
+    const config = METRIC_CONFIGS[metric];
     const formatted = formatMetricValue(value, config.format);
     const changeHtml = change && change !== 0
       ? ` <span style="color: #6b7280; font-size: 11px;">→</span> <span style="color: ${change > 0 ? '#4ade80' : '#f87171'}; font-size: 11px;">${formatMetricValue(value + change, config.format)} now</span>`
@@ -309,7 +312,8 @@ export default function Globe({
               state.state_name,
               state.heat_index,
               state.change,
-              `${state.metro_count} metro${state.metro_count > 1 ? 's' : ''}`
+              `${state.metro_count} metro${state.metro_count > 1 ? 's' : ''}`,
+              'heat_index'
             ))
             .addTo(map.current);
 
