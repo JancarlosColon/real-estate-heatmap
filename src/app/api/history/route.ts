@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
+import { rateLimit } from '@/app/lib/rate-limit';
 
 // Returns up to 12 months of heat_index history for a county (by fips) or ZIP
 export async function GET(request: NextRequest) {
+  const limited = rateLimit(request);
+  if (limited) return limited;
+
   const fips = request.nextUrl.searchParams.get('fips');
   const zip = request.nextUrl.searchParams.get('zip');
 

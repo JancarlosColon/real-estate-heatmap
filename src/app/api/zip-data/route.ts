@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
 import { periodOffsets } from '@/app/lib/metrics-config';
+import { rateLimit } from '@/app/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
+  const limited = rateLimit(request);
+  if (limited) return limited;
+
   const period = request.nextUrl.searchParams.get('period') || '30d';
   const countyName = request.nextUrl.searchParams.get('county');
   const stateCode = request.nextUrl.searchParams.get('state');

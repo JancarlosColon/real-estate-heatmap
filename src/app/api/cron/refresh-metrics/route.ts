@@ -21,7 +21,10 @@ function getSupabase() {
 function verifyCronSecret(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;
+  if (!cronSecret) {
+    console.error('[CRON-METRICS] CRON_SECRET not set — rejecting request');
+    return false;
+  }
   return authHeader === `Bearer ${cronSecret}`;
 }
 

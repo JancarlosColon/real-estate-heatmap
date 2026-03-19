@@ -67,7 +67,7 @@ CRON_SECRET=                     # Vercel Cron auth token (set in Vercel env var
 
 ## External Services
 - **Mapbox**: 3D globe rendering, GeoJSON layers for state boundaries (dark-v11 style)
-- **Supabase**: PostgreSQL database, project ID `SUPABASE_PROJECT_ID` (us-east-1)
+- **Supabase**: PostgreSQL database (us-east-1)
 - **Vercel**: Hosting with analytics
 
 ## Data Source

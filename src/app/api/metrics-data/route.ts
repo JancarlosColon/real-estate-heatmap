@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
 import { periodOffsets } from '@/app/lib/metrics-config';
+import { rateLimit } from '@/app/lib/rate-limit';
 
 // GET /api/metrics-data?metric=zhvi&level=county&state=CA&period=1y
 // GET /api/metrics-data?metric=zhvi&level=zip&state=CA&county=Los%20Angeles%20County&period=30d
 
 export async function GET(request: NextRequest) {
+  const limited = rateLimit(request);
+  if (limited) return limited;
+
   const metric = request.nextUrl.searchParams.get('metric');
   const level = request.nextUrl.searchParams.get('level');
   const stateCode = request.nextUrl.searchParams.get('state');
